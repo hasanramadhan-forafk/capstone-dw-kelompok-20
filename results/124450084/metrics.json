@@ -1,6 +1,7 @@
 {
   "metrik": {
-    "berkas_terverifikasi": 13
+    "berkas_dibaca": 13,
+    "baris_mentah": 3450
   },
   "seed": 0,
   "data_hash": "9f4e4f359218d1f11d06366b4d0a41d0748a7f4dbf347c850d8e6aa67337a8b2",
