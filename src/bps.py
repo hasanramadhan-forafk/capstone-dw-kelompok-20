@@ -114,9 +114,9 @@ if __name__ == "__main__":
     for file in file_csv_list:
         try:
             df = baca_csv_bps(file)
-            print(f"✅ {file} | Baris: {len(df)}")
+            print(f" {file} | Baris: {len(df)}")
         except Exception as e:
-            print(f"❌ Gagal baca {file}: {e}")
+            print(f" Gagal baca {file}: {e}")
             
     # Bersihkan layar lagi sebelum JSON (untuk membuang teks HTML dari lxml)
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -125,8 +125,8 @@ if __name__ == "__main__":
     for file in file_json_list:
         try:
             df = baca_json_bps(file)
-            print(f"✅ {file} | Baris: {len(df)}")
+            print(f" Berhasil baca {file} | Baris: {len(df)}")
         except Exception as e:
-            print(f"❌ Gagal baca {file}: {e}")
+            print(f" Gagal baca {file}: {e}")
             
     print("\n=== SELESAI ===")
