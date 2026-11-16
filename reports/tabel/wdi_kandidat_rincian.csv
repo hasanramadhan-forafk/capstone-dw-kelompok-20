@@ -1,0 +1,12 @@
+seri_wdi,seri_utama,rincian_utama,status,alasan,n_irisan,tahun_irisan
+AG.LND.FRST.ZS,tabel:sdg15_tutupan_hutan:persen,hutan,kandidat,"Sama-sama persen luas hutan. Penyebut beda: WDI = luas daratan (FAO), BPS = jumlah luas wilayah; definisi hutan juga bisa beda. Bandingkan arah/tren dulu, level dengan catatan.",10,"2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023"
+AG.LND.FRST.K2,tabel:sdg15_tutupan_hutan:luas_ribu_ha,hutan,kandidat,"Sama-sama luas tutupan hutan. Seragamkan satuan (1 km2 = 0,1 ribu ha). Pembanding nasional BPS = jumlah 38 provinsi; Kaltim 2014-2020 masih gabungan dengan Kaltara dan nilai 2020 tertukar antarprovinsi (total nasional tidak terpengaruh jika murni tertukar).",10,"2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023"
+AG.LND.FRST.K2,var1304,Kawasan Hutan,sekunder,"Kawasan hutan = status penetapan, bukan tutupan; level bisa berbeda jauh dari WDI.",6,"2014, 2015, 2016, 2017, 2018, 2023"
+AG.LND.FRST.ZS,var1304,Kawasan Hutan,tidak sebanding,Persen tutupan vs luas kawasan berstatus hutan: konsep berbeda.,6,"2014, 2015, 2016, 2017, 2018, 2023"
+EN.ATM.PM25.MC.M3,var2532,Indeks Kualitas Udara,hanya arah,"PM2.5 (ug/m3, rata-rata tertimbang populasi nasional) vs indeks tanpa satuan: bandingkan arah tren atau korelasi, bukan level. Indeks lain (air, lahan, gambut) tidak sebanding.",5,"2019, 2020, 2021, 2022, 2023"
+AG.LND.FRST.ZS,var588,Kritis / Sangat Kritis / Jumlah,tidak sebanding,Lahan kritis tidak punya padanan di WDI; hanya 4 periode.,4,"2006, 2011, 2013, 2018"
+AG.LND.FRST.K2,var588,Kritis / Sangat Kritis / Jumlah,tidak sebanding,Lahan kritis tidak punya padanan di WDI; hanya 4 periode.,4,"2006, 2011, 2013, 2018"
+EN.ATM.PM25.MC.M3,var1304,(semua),tidak sebanding,Variabel berbeda.,6,"2014, 2015, 2016, 2017, 2018, 2023"
+EN.ATM.PM25.MC.M3,var588,(semua),tidak sebanding,Variabel berbeda.,4,"2006, 2011, 2013, 2018"
+EN.ATM.PM25.MC.M3,tabel:sdg15_tutupan_hutan:luas_ribu_ha,(semua),tidak sebanding,Variabel berbeda.,10,"2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023"
+EN.ATM.PM25.MC.M3,tabel:sdg15_tutupan_hutan:persen,(semua),tidak sebanding,Variabel berbeda.,10,"2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023"
