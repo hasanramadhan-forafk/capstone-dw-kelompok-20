@@ -1,0 +1,6 @@
+seri,rincian,wilayah,n,periode_kosong,alasan
+tabel:sdg15_tutupan_hutan:luas_ribu_ha,hutan,KALIMANTAN UTARA,7,"2014, 2015, 2016, 2017, 2018, 2019, 2020",nilai kosong di berkas mentah (KASUS.md menyebut mentah tanpa baris kosong)
+tabel:sdg15_tutupan_hutan:luas_ribu_ha,jumlah,KALIMANTAN UTARA,7,"2014, 2015, 2016, 2017, 2018, 2019, 2020",nilai kosong di berkas mentah (KASUS.md menyebut mentah tanpa baris kosong)
+tabel:sdg15_tutupan_hutan:luas_ribu_ha,non_hutan,KALIMANTAN UTARA,7,"2014, 2015, 2016, 2017, 2018, 2019, 2020",nilai kosong di berkas mentah (KASUS.md menyebut mentah tanpa baris kosong)
+tabel:sdg15_tutupan_hutan:persen,hutan,KALIMANTAN UTARA,7,"2014, 2015, 2016, 2017, 2018, 2019, 2020",nilai kosong di berkas mentah (KASUS.md menyebut mentah tanpa baris kosong)
+tabel:sdg15_tutupan_hutan:persen,non_hutan,KALIMANTAN UTARA,7,"2014, 2015, 2016, 2017, 2018, 2019, 2020",nilai kosong di berkas mentah (KASUS.md menyebut mentah tanpa baris kosong)
