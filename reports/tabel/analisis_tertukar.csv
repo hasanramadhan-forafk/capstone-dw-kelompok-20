@@ -1,0 +1,28 @@
+wilayah_kode,nama_wilayah,tahun,hutan_plus_non_hutan,total_di_baris,total_biasa_provinsi_ini,total_di_baris_sama_dgn_biasa,hutan_plus_non_hutan_sama_dgn_total_milik,jenis_dugaan
+1700,BENGKULU,2020,1659.7,2002.9,2002.9,True,KEP. BANGKA BELITUNG,tertukar_antarprovinsi
+1800,LAMPUNG,2020,2002.9,3435.4,3435.4,True,BENGKULU,tertukar_antarprovinsi
+1900,KEP. BANGKA BELITUNG,2020,3435.4,1659.7,1659.7,True,LAMPUNG,tertukar_antarprovinsi
+3100,DKI JAKARTA,2020,939.2,65.3,65.3,True,BANTEN,tertukar_antarprovinsi
+3200,JAWA BARAT,2020,65.3,3698.6,3698.6,True,DKI JAKARTA,tertukar_antarprovinsi
+3300,JAWA TENGAH,2020,3698.6,3456.6,3456.6,True,JAWA BARAT,tertukar_antarprovinsi
+3400,DI YOGYAKARTA,2016,319.4,3194.0,319.4,False,,geser_desimal_pada_total
+3400,DI YOGYAKARTA,2020,3456.6,319.4,319.4,True,JAWA TENGAH,tertukar_antarprovinsi
+3500,JAWA TIMUR,2020,319.4,4837.7,4837.7,True,DI YOGYAKARTA,tertukar_antarprovinsi
+3600,BANTEN,2020,4837.7,939.2,939.2,True,JAWA TIMUR,tertukar_antarprovinsi
+5100,BALI,2018,567.2,566.9,566.9,True,,selisih_kecil (pembulatan?)
+5100,BALI,2020,14572.8,566.9,566.9,True,KALIMANTAN BARAT,tertukar_antarprovinsi
+5200,NUSA TENGGARA BARAT,2020,3713.9,1980.2,1980.2,True,KALIMANTAN SELATAN,tertukar_antarprovinsi
+5300,NUSA TENGGARA TIMUR,2020,15266.2,4722.5,4722.5,True,KALIMANTAN TENGAH,tertukar_antarprovinsi
+6100,KALIMANTAN BARAT,2020,19504.8,14572.8,14572.8,True,KALIMANTAN TIMUR,tertukar_antarprovinsi
+6200,KALIMANTAN TENGAH,2020,1439.5,15266.2,15266.2,True,SULAWESI UTARA,tertukar_antarprovinsi
+6300,KALIMANTAN SELATAN,2020,1198.5,3713.9,3713.9,True,GORONTALO,tertukar_antarprovinsi
+6400,KALIMANTAN TIMUR,2020,6034.7,19504.8,19504.8,True,SULAWESI TENGAH,tertukar_antarprovinsi
+7100,SULAWESI UTARA,2020,3611.6,1439.5,1439.5,True,SULAWESI TENGGARA,tertukar_antarprovinsi
+7200,SULAWESI TENGAH,2020,1680.2,6034.7,6034.7,True,SULAWESI BARAT,tertukar_antarprovinsi
+7400,SULAWESI TENGGARA,2020,566.9,3611.6,3611.6,True,BALI,tertukar_antarprovinsi
+7500,GORONTALO,2020,1980.2,1198.5,1198.5,True,NUSA TENGGARA BARAT,tertukar_antarprovinsi
+7600,SULAWESI BARAT,2020,4722.5,1680.2,1680.2,True,NUSA TENGGARA TIMUR,tertukar_antarprovinsi
+8100,MALUKU,2020,3130.6,4622.1,4622.1,True,MALUKU UTARA,tertukar_antarprovinsi
+8200,MALUKU UTARA,2020,4622.1,3130.6,3130.6,True,MALUKU,tertukar_antarprovinsi
+9100,PAPUA BARAT,2020,31076.9,9624.9,9624.9,True,PAPUA,tertukar_antarprovinsi
+9400,PAPUA,2020,9624.9,31076.9,31076.9,True,PAPUA BARAT,tertukar_antarprovinsi

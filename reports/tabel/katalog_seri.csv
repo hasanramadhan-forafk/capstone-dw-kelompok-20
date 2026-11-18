@@ -1,0 +1,6 @@
+seri_kode,berkas,judul_berkas,var_di_manifest,kecocokan_kode,satuan_silver,kode_sdg_katalog,rincian
+tabel:sdg15_tutupan_hutan:luas_ribu_ha,sdg15_tutupan_hutan,Rekapitulasi Luas Penutupan Lahan Hutan dan Non Hutan Menurut Provinsi Tahun 2014-2023 (Ribu Ha),,tabel statis (tanpa var),ribu_hektar,15.1.1,hutan | non_hutan | total
+tabel:sdg15_tutupan_hutan:persen,sdg15_tutupan_hutan,Rekapitulasi Luas Penutupan Lahan Hutan dan Non Hutan Menurut Provinsi Tahun 2014-2023 (Ribu Ha),,tabel statis (tanpa var),persen,15.1.1,hutan | non_hutan
+var1304,sdg15_tutupan_kawasan,Luas Penutupan Lahan Indonesa di Dalam dan di Luar Kawasan Hutan Menurut Provinsi,1304,cocok,ribu_hektar,15.3.1,apl | kawasan_hutan | total
+var2532,sdg15_iklh,Komponen Penyusun Indeks Kualitas Lingkungan Hidup Menurut Provinsi,2532,cocok,tidak_ada,11.6.2,kualitas_air | kualitas_air_laut | kualitas_ekosistem_gambut | kualitas_lahan | kualitas_tutupan_lahan | kualitas_udara
+var588,sdg15_lahan_kritis,Luas dan Penyebaran Lahan Kritis Menurut Provinsi,588,cocok,ribu_hektar,15.3.1,kritis | sangat_kritis | total
