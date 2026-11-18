@@ -1,6 +1,10 @@
 {
   "metrik": {
-    "berkas_terverifikasi": 13
+    "baris_silver": 3940,
+    "seri_silver": 5,
+    "rincian_dienkode": 13,
+    "baris_tanpa_nilai": 35,
+    "keputusan_dicatat": 8
   },
   "seed": 0,
   "data_hash": "9f4e4f359218d1f11d06366b4d0a41d0748a7f4dbf347c850d8e6aa67337a8b2",
