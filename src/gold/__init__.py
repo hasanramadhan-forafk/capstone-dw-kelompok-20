@@ -18,12 +18,13 @@ def jalankan(data_silver):
 =======
 """Tahap 4–6 — Reshape, integrasi, dan penyimpanan ke Gold (pertemuan VII, IX, XI, XII).
 
-Sprint 1: tabel nasional dan daftar pasangan rekonsiliasi.
+Panel provinsi x periode x indikator dan tabel rekonsiliasi dengan selisih dikerjakan di Sprint 2.
 """
-from src.gold import nasional
+from src.gold import muat_sql, nasional
 
 
 def jalankan(silver=None):
     """Terima Silver, tulis tabel Gold, kembalikan {nama_tabel: DataFrame}."""
-    return nasional.jalankan(silver)
->>>>>>> 8ef2b21 (Tugas #10: Tabel nasional periode x seri dan daftar pasangan rekonsiliasi (124450087))
+    hasil = nasional.jalankan(silver)
+    hasil["baris_sql"] = muat_sql.jalankan(silver)
+    return hasil
