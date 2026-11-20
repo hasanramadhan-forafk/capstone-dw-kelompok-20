@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 """Tahap 4-6: Pembentukan data Gold (Panel, Nasional, Rekonsiliasi, dan SQL).
 
 Alur eksekusi dimulai dari hasil Silver, lalu dilanjutkan secara berurutan hingga siap dimuat ke DuckDB.
@@ -14,3 +15,15 @@ def jalankan(data_silver):
     output_gold["data_sql"] = muat_sql.jalankan(data_silver, output_gold)
     
     return output_gold
+=======
+"""Tahap 4–6 — Reshape, integrasi, dan penyimpanan ke Gold (pertemuan VII, IX, XI, XII).
+
+Sprint 1: tabel nasional dan daftar pasangan rekonsiliasi.
+"""
+from src.gold import nasional
+
+
+def jalankan(silver=None):
+    """Terima Silver, tulis tabel Gold, kembalikan {nama_tabel: DataFrame}."""
+    return nasional.jalankan(silver)
+>>>>>>> 8ef2b21 (Tugas #10: Tabel nasional periode x seri dan daftar pasangan rekonsiliasi (124450087))

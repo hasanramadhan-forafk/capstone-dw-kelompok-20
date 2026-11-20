@@ -1,5 +1,12 @@
 {
   "metrik": {
+    "pasangan_rekonsiliasi": 3,
+    "periode_beririsan": 26,
+    "pasangan_konteks": 1,
+    "irisan_p1": 10,
+    "irisan_p2": 10,
+    "irisan_p3": 5,
+    "irisan_p4": 6,
     "berkas_terverifikasi": 13
   },
   "seed": 0,
