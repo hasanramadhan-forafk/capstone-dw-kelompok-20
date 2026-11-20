@@ -8,3 +8,4 @@ melainkan "mengerti atau tidak" — isi kolom terakhir dengan apa yang Anda ubah
 |---|---|---|---|---|
 | 2026-11-03 | 12345678 | Copilot | kerangka DataLoader | ganti normalisasi, tambah seed worker |
 | 2026-11-18 | 124450026 | Claude | kerangka transformasi Silver kasus 20 | Memperbaiki IndentationError karena ada indentasi yang salah pada saat code dijalankan |
+| 2026-11-20 | 124450026 | Claude | mencocokkan satuan dan kode SDG semua seri dengan metadata untuk revisi #8 | membuka manifest_asal.json dan memeriksadefinisi SDG |
