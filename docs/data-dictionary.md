@@ -1,4 +1,4 @@
-# Data Dictionary — <MBG : Memang Banyak tuGas>
+# Data Dictionary — MBG : Memang Banyak tuGas
 
 Dokumen ini mendokumentasikan skema, tipe data, satuan, definisi, serta silsilah data (*data lineage*) untuk tabel **Silver** (`data/silver/silver.parquet`). Kolom Gold akan ditambahkan pada Sprint 2–3.
 
