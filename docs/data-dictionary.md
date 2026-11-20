@@ -1,4 +1,4 @@
-# Data dictionary — <Nama tim>
+# Data dictionary — <MBG : Memang Banyak tuGas>
 
 Satu tabel per keluaran (Silver dan setiap tabel Gold). Isi dari data nyata, bukan dari ingatan:
 tipe, satuan, rentang, dan jumlah kosong dihitung ulang setiap kali pipeline berjalan.
