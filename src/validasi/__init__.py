@@ -2,7 +2,7 @@
 from pathlib import Path
 import pandas as pd
 from src.validasi import aturan, khusus
-
+import tabulate
 
 def jalankan(silver: pd.DataFrame, gold=None) -> pd.DataFrame:
     if not isinstance(silver, pd.DataFrame):
