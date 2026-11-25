@@ -1,6 +1,7 @@
-# Laporan tim — FORESTIQ, kasus 20 Hutan, lahan, dan lingkungan
+# Laporan tim — MBG : Memang Banyak tuGas, kasus 20 Hutan, lahan, dan lingkungan
 
-Status: draf akhir Sprint 1. Angka dapat ditarik ulang dari `data/silver/silver.parquet`, `reports/`, dan `log-keputusan.csv` (id K-xxx).
+Satu dokumen bersama, enam bagian. Angka harus dapat ditarik ulang dari `data/silver`, `data/gold`,
+dan `log-keputusan.csv` yang sudah di-*commit*.
 
 ## Ringkasan
 
