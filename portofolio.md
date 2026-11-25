@@ -1,6 +1,6 @@
 ## Nama tim dan avatar
 
-Nama tim: FORESTIQ
+Nama tim: MBG : Memang Banyak tuGas
 Avatar tim: Flamingo
 
 ## Komponen tiap anggota
