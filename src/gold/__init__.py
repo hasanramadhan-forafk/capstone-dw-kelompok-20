@@ -3,7 +3,8 @@
 Sprint 1: tabel nasional dan daftar pasangan rekonsiliasi.
 Sprint 2: aturan pemilihan satu nilai per sel (src/gold/pilih.py) -> panel provinsi dan tabel nasional.
 """
-from src.gold import muat_sql, nasional, pilih
+
+from src.gold import lebar, muat_sql, nasional, pilih 
 
 
 def jalankan(silver=None):
@@ -11,5 +12,6 @@ def jalankan(silver=None):
     hasil = nasional.jalankan(silver)
     hasil["baris_sql"] = muat_sql.jalankan(silver)
     g = pilih.jalankan(silver if silver is not None else pilih.SILVER)
+    lebar.jalankan(g["panel"])                               
     hasil["gold_panel"], hasil["gold_nasional"], hasil["gold_ringkasan"] = g["panel"], g["nasional"], g["ringkasan"]
     return hasil
