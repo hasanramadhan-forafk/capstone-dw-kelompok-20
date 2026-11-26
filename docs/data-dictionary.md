@@ -111,3 +111,59 @@ Setiap baris data pada tabel Silver dapat diverifikasi keabsahannya hingga ke be
      ACEH,2014,jumlah,luas_ribu_ha,5647.3,,
      ```
    * Nilai mentah adalah `5647.3` dengan rincian `jumlah` yang dipetakan menjadi `total`. Terbukti nilai pada Silver persis sama dan setia pada sumber aslinya.
+---
+
+## 6. Tabel Gold (Sprint 2)
+
+Gold dibentuk dari Silver oleh `src/gold/` dan ditulis ulang setiap `python pipeline.py`. Semua angka
+tetap berasal dari Silver; Gold hanya memilih satu nilai per sel, menyeragamkan satuan, dan menyusun
+bentuk panel/rekonsiliasi.
+
+### 6.1 `data/gold/panel.parquet` (panel panjang)
+
+Satu baris = satu indikator x wilayah provinsi x periode. Kunci unik: `indikator + wilayah_kode + periode`.
+
+| Nama Kolom | Tipe | Keterangan |
+|---|---|---|
+| `indikator` | string | `seri_kode|rincian`, mis. `var1304|kawasan_hutan` |
+| `seri_kode` | string | Seri asal di Silver |
+| `rincian` | string | Rincian asal di Silver (`hutan`, `total`, `kualitas_udara`, ...) |
+| `wilayah_kode` | int | Kode provinsi (1100-9700); Indonesia 9999 dipisah ke tabel nasional |
+| `nama_wilayah` | string | Nama provinsi baku 2025 |
+| `periode` / `tahun` | string / int | Tahun observasi |
+| `nilai` | float | Nilai Gold; satuan mengikuti `satuan` |
+| `satuan` / `satuan_baku` | string | Satu satuan per indikator (ribu_hektar, persen, indeks/tidak_ada) |
+| `status_sel` | string | `terisi` untuk baris panel yang berasal dari Silver |
+| `penanda` | string | Penanda anomali Sprint 1 (`galat_input`, `patahan`, `outlier_asli`) |
+| `_berkas_raw`, `_sha256_raw` | string | Lineage ke berkas mentah; dipakai aturan `gold: sel tertelusur ke Silver` |
+
+Panel lebar `data/gold/panel_lebar.parquet` memakai `pivot` (bukan `pivot_table`): satu kolom per
+indikator, satu baris per `wilayah_kode x tahun`. Kamus kolom ada di `data/gold/kamus_indikator.parquet`.
+
+### 6.2 `data/gold/nasional.parquet`
+
+Satu baris = satu seri x rincian x periode untuk wilayah Indonesia (9999), termasuk seri pembanding WDI.
+Kunci unik: `seri_kode + rincian + periode`. Nilai WDI yang kosong tidak diisi.
+
+### 6.3 `data/gold/rekonsiliasi.parquet`
+
+Satu baris = satu pasangan x seri pembanding x periode. Kolom penting: `nilai_utama`,
+`nilai_pembanding`, `selisih` (= utama - pembanding), `selisih_relatif`, `asal`
+(`keduanya`/`hanya_utama`/`hanya_pembanding`), `kategori`, dan `penjelasan`.
+
+Kategori baku: `definisi berbeda`, `metode berbeda`, `vintage berbeda`, `cakupan berbeda`,
+`konteks berbeda`, `belum terjelaskan`, `tanpa pasangan`, `tidak berselisih`. Setiap baris
+berpasangan (`asal = keduanya`) wajib punya kategori dan penjelasan.
+
+### 6.4 Validasi otomatis Gold
+
+`src/validasi/gold.py` menjalankan aturan keras berikut dari `python pipeline.py`:
+
+1. `gold: kunci panel unik` - `indikator + wilayah_kode + periode` tidak kembar.
+2. `gold: satu satuan per indikator` - satu indikator hanya punya satu satuan.
+3. `gold: status sel dan nilai` - status baku; nilai ada jika dan hanya jika `terisi`.
+4. `gold: sel tertelusur ke Silver` - setiap sel terisi punya baris Silver asal.
+5. `gold: tabel nasional unik` - `seri_kode + rincian + periode` tidak kembar.
+6. `rekonsiliasi: kategori baku` - kategori dari daftar baku dan penjelasan tidak kosong.
+7. `rekonsiliasi: baris berpasangan berkategori` - setiap baris `keduanya` punya kategori dan penjelasan.
+8. `rekonsiliasi: selisih = utama - pembanding` - selisih dihitung ulang dan cocok.
