@@ -1,23 +1,23 @@
-# Data Dictionary — MBG : Memang Banyak tuGas
+# Data Dictionary — Tim MBG (Kasus 20: Hutan, Lahan, dan Lingkungan)
 
-Dokumen ini mendokumentasikan skema, tipe data, satuan, definisi, serta silsilah data (*data lineage*) untuk tabel **Silver** (`data/silver/silver.parquet`). Kolom Gold akan ditambahkan pada Sprint 2–3.
+Dokumen ini mendokumentasikan skema, tipe data, satuan, definisi, serta silsilah data (*data lineage*) untuk tabel **Silver** (`data/silver/silver.parquet`) dan rangkaian tabel **Gold** (`data/gold/*.parquet`) sesuai target Sprint 1 s.d. Sprint 2.
 
 ---
 
-## 1. Tabel Utama: `data/silver/silver.parquet`
+## 1. Tabel Silver: `data/silver/silver.parquet`
 
 * **Jumlah Baris:** 3.940 baris (BPS) hingga 4.045 baris (dengan WDI).
-* **Definisi Satu Baris:** Satu baris merepresentasikan observasi tunggal dari satu kombinasi: **seri indikator × wilayah × periode × rincian dimensi × berkas sumber**.
+* **Definisi Satu Baris:** Satu baris merepresentasikan observasi tunggal dari satu kombinasi: **seri indikator × wilayah × periode × rincian dimensi × berkas sumber**. Nilai dari sumber berbeda tidak digabung di sini.
 * **Kunci Unik (*Composite Primary Key*):** `sumber`, `seri_kode`, `wilayah_kode`, `periode`, `rincian`, `_berkas_raw`.
 
 | Nama Kolom | Tipe Data | Satuan Baku | Boleh Kosong | Rentang / Nilai Sah | Asal Kolom | Definisi & Keterangan |
 |---|:---:|:---:|:---:|---|---|---|
 | `sumber` | `string` | — | Tidak | `bps`, `wdi` | Nama folder sumber di `data/raw/` | Lembaga penerbit data resmi (*publisher*). |
-| `seri_kode` | `string` | — | Tidak | `tabel:sdg15_tutupan_hutan:luas_ribu_ha`, `tabel:sdg15_tutupan_hutan:persen`, `var1304`, `var588`, `var2532`, `AG.LND.FRST.K2`, `AG.LND.FRST.ZS`, `EN.ATM.PM25.MC.M3` | Metadata BPS (`var_id`) dan World Bank Indicator ID | Identitas unik seri indikator. Definisi rinci pada tabel seri di bawah. |
+| `seri_kode` | `string` | — | Tidak | `tabel:sdg15_tutupan_hutan:luas_ribu_ha`, `tabel:sdg15_tutupan_hutan:persen`, `var1304`, `var588`, `var2532`, `AG.LND.FRST.K2`, `AG.LND.FRST.ZS`, `EN.ATM.PM25.MC.M3` | Metadata BPS (`var_id`) dan World Bank Indicator ID | Identitas unik seri indikator. |
 | `wilayah_kode` | `int64` | — | Tidak | `1100` – `9700`, `9999` | Kamus standar wilayah (Log K-001) | Kode wilayah baku: 2 digit kode provinsi BPS × 100. Kode `9999` melambangkan agregat Nasional (Indonesia). |
 | `nama_wilayah` | `string` | — | Tidak | Aceh, Sumatera Utara, ..., Papua Barat Daya, INDONESIA (39 nama) | Pemetaan wilayah BPS 2025 | Nama provinsi baku berdasarkan susunan 38 provinsi tahun 2025. |
 | `periode` | `string` | — | Tidak | `1990` s.d. `2025` | Kolom `tahun` BPS / `date` WDI | Periode waktu observasi data dalam format tahun baku 4 digit. |
-| `jenis_periode` | `string` | — | Tidak | `tahun` | Diturunkan dari kolom `periode` (Log K-009) | Frekuensi observasi penerbitan data. Seluruh data kasus ini berfrekuensi tahunan. |
+| `jenis_periode` | `string` | — | Tidak | `tahun` | Diturunkan dari kolom `periode` (Log K-009) | Frekuensi observasi penerbitan data (tahunan). |
 | `rincian` | `string` | — | Tidak | `total`, `hutan`, `non_hutan`, `kritis`, `sangat_kritis`, `kawasan_hutan`, `apl`, `kualitas_udara`, `kualitas_air`, `kualitas_tutupan_lahan`, `kualitas_lahan`, `kualitas_ekosistem_gambut`, `kualitas_air_laut` | Kolom `turvar` BPS / `tutupan` tabel statis | Kategori pecahan atau dimensi indikator. Nilai tanpa pecahan ditulis `total`. |
 | `nilai` | `float64` | Mengikuti kolom `satuan` | Tidak | $\ge 0$ (luas/indeks), $0$ – $100$ (persen) | Kolom `nilai` mentah setelah transformasi satuan | Nilai numerik observasi. Sel kosong (*missing*) atau *null* tidak dimuat ke Silver. |
 | `satuan` | `string` | — | Tidak | `ribu_hektar`, `persen`, `indeks`, `km2`, `mikrogram_per_m3` | Keputusan wrangling (Log K-002, K-005, K-018) | Satuan ukuran baku metrik. Setiap seri hanya memiliki satu satuan yang seragam. |
@@ -30,65 +30,95 @@ Dokumen ini mendokumentasikan skema, tipe data, satuan, definisi, serta silsilah
 
 ---
 
-## 2. Rincian Dimensi (*Breakdown*) per Seri
+## 2. Tabel Gold: `data/gold/panel.parquet` (Panel Provinsi Panjang)
 
-Penulisan rincian dimensi diseragamkan dengan huruf kecil dan pemisah *underscore*:
+* **Definisi Satu Baris:** Satu baris merepresentasikan satu sel grid kombinasi: **indikator × provinsi × periode**, mencakup sel terisi maupun sel kosong yang telah terklasifikasi.
+* **Kunci Unik (*Composite Primary Key*):** `indikator`, `wilayah_kode`, `periode`.
 
-1. **Seri Tutupan Hutan (`tabel:sdg15_tutupan_hutan`):**
-   * `total`: Luas keseluruhan daratan provinsi.
-   * `hutan`: Areal berpenutupan hutan.
-   * `non_hutan`: Areal non-hutan (lahan terbuka, terbangun, perkebunan).
-2. **Seri Lahan Kritis (`var588`):**
-   * `total`: Akumulasi lahan kritis dan sangat kritis.
-   * `kritis`: Kategori lahan dengan tingkat kerusakan kritis.
-   * `sangat_kritis`: Kategori lahan dengan tingkat kerusakan sangat kritis.
-3. **Seri Tutupan Kawasan (`var1304`):**
-   * `total`: Total luas daratan.
-   * `kawasan_hutan`: Areal di dalam kawasan hutan negara (Hutan Lindung, Konservasi, Produksi).
-   * `apl`: Areal Penggunaan Lain (di luar kawasan hutan negara).
-4. **Seri Komponen IKLH (`var2532`):**
-   * `kualitas_udara`: Indeks Kualitas Udara (IKU).
-   * `kualitas_air`: Indeks Kualitas Air (IKA).
-   * `kualitas_tutupan_lahan`: Indeks Kualitas Tutupan Lahan (IKTL).
-   * `kualitas_lahan`: Indeks Kualitas Lahan (IKL).
-   * `kualitas_ekosistem_gambut`: Indeks Kualitas Ekosistem Gambut (IKEG).
-   * `kualitas_air_laut`: Indeks Kualitas Air Laut (IKAL).
+| Nama Kolom | Tipe Data | Satuan Baku | Boleh Kosong | Rentang / Nilai Sah | Asal Kolom | Definisi & Keterangan |
+|---|:---:|:---:|:---:|---|---|---|
+| `indikator` | `string` | — | Tidak | `tabel:sdg15_tutupan_hutan:luas_ribu_ha`, `tabel:sdg15_tutupan_hutan:persen [tutupan=hutan]`, `var1304`, `var2532 [komponen=ika]`, `var2532 [komponen=iktl]`, `var2532 [komponen=iku]`, `var588` | Diturunkan dari seri dan rincian utama Silver | Label deret indikator utama yang dimonitor pada level provinsi. |
+| `seri_kode` | `string` | — | Tidak | `tabel:sdg15_tutupan_hutan:luas_ribu_ha`, `tabel:sdg15_tutupan_hutan:persen`, `var1304`, `var2532`, `var588` | Silver `seri_kode` | Kode seri asal di tingkat Silver. |
+| `rincian` | `string` | — | Tidak | `total`, `tutupan=hutan`, `komponen=ika`, `komponen=iktl`, `komponen=iku` | Silver `rincian` | Dimensi spesifik indikator. |
+| `wilayah_kode` | `int64` | — | Tidak | `1100` – `9700` | Silver `wilayah_kode` | Kode provinsi BPS (hanya 38 provinsi, tanpa kode nasional 9999). |
+| `nama_wilayah` | `string` | — | Tidak | Aceh s.d. Papua Barat Daya (38 provinsi) | Silver `nama_wilayah` | Nama resmi provinsi susunan 2025. |
+| `periode` | `string` | — | Tidak | `2006` s.d. `2024` | Grid panel tahunan | Tahun observasi panel. |
+| `jenis_periode` | `string` | — | Tidak | `tahun` | Silver `jenis_periode` | Frekuensi observasi (tahunan). |
+| `nilai` | `float64` | Mengikuti kolom `satuan` | Ya (jika kosong) | Sesuai rentang Silver | Silver `nilai` | Nilai indikator. Bernilai *null/NaN* jika status sel bukan `terisi`. |
+| `satuan` | `string` | — | Tidak | `ribu_hektar`, `persen`, `indeks`, `hektar` | Silver `satuan` | Satuan baku indikator. Satu indikator hanya memiliki satu satuan seragam. |
+| `status_sel` | `string` | — | Tidak | `terisi`, `missing`, `tidak_diterbitkan`, `belum_ada`, `batas_lama` | Hasil audit grid panel (Sprint 2) | Kategori status sel: `terisi` (ada nilai), `belum_ada` (provinsi baru belum dimekarkan), `tidak_diterbitkan` (misal DKI Jakarta di lahan kritis), `missing` (data bolong). |
+| `penanda` | `string` | — | Ya | `outlier`, `patahan_wilayah`, `perbedaan_struktural` | Laporan deteksi anomali Sprint 1 | Penanda kualitas data tanpa mengubah nilai asli. |
+| `rujukan_tahun` | `float64` | — | Ya | Kosong (*NaN*) | Silver `rujukan_tahun` | Rujukan jendela survei. |
+| `_berkas_raw` | `string` | — | Ya | Relatif terhadap `data/raw/` | Silver `_berkas_raw` | Lineage berkas mentah (hanya terisi jika sel berstatus `terisi`). |
+| `_sha256_raw` | `string` | — | Ya | Hash SHA-256 | Silver `_sha256_raw` | Lineage sidik berkas mentah. |
 
 ---
 
-## 3. Satuan Baku, Kode SDG, dan Aturan Konversi
+## 3. Tabel Gold: `data/gold/nasional.parquet` (Tabel Seri Tingkat Nasional)
 
-| Kode Seri | Satuan Asal di Mentah | Satuan Baku Silver | Faktor Pembagi / Konversi | Kode SDG | Alasan & Bukti Sumber |
-|---|:---:|:---:|:---:|:---:|---|
-| `tabel:sdg15_tutupan_hutan:luas_ribu_ha` | `Ribu Ha` | `ribu_hektar` | 1 (Tetap) | 15.1.1 | Judul tabel BPS menyebutkan *(Ribu Ha)*. |
-| `tabel:sdg15_tutupan_hutan:persen` | `%` | `persen` | 1 (Tetap) | 15.1.1 | Header kolom BPS mencantumkan `%`. |
-| `var1304` | `Ribu Hektar` | `ribu_hektar` | 1 (Tetap) | 15.1.1 | BPS `var.unit`: `Ribu Hektar`. Kode SDG dikoreksi dari 15.3.1 ke 15.1.1 karena mengukur tutupan hutan. |
-| `var588` | `Hektar` | `ribu_hektar` | **1.000** | 15.3.1 | BPS `var.unit`: `Hektar`. **Dibagi 1.000** agar seragam dengan seri luas lainnya (Log K-002). |
-| `var2532` | *(kosong)* | `indeks` | 1 (Tetap) | 15 / 11.6.2 | Skala 0–100. Komponen udara merujuk 11.6.2; agregat merujuk SDG 15 (Log K-005, K-020). |
-| `AG.LND.FRST.K2` | `sq. km` | `km2` | 1 (Tetap) | 15.1.1 | WDI: Luas tutupan hutan nasional. |
-| `AG.LND.FRST.ZS` | `% of land area` | `persen` | 1 (Tetap) | 15.1.1 | WDI: Persentase luas hutan terhadap luas daratan. |
-| `EN.ATM.PM25.MC.M3` | `ug/m3` | `mikrogram_per_m3` | 1 (Tetap) | 11.6.2 | WDI: Paparan polusi udara tahunan rata-rata penduduk. |
+* **Definisi Satu Baris:** Satu baris merepresentasikan observasi seri indikator pada tingkat agregat **Nasional (Indonesia / wilayah_kode = 9999)** atau indikator pembanding internasional (WDI).
+* **Kunci Unik (*Composite Primary Key*):** `seri_kode`, `rincian`, `periode`.
 
----
-
-## 4. Standar Kode Wilayah
-
-* **Provinsi:** Menggunakan kode resmi 2-digit BPS dikalikan 100 (contoh: Aceh = `1100`, Jawa Barat = `3200`, Papua Barat Daya = `9600`).
-* **Nasional (Indonesia):** Ditetapkan secara konsisten dengan kode **`9999`**. Kode WDI `ID`/`IDN` dipetakan ke `9999`.
+| Nama Kolom | Tipe Data | Keterangan & Asal |
+|---|:---:|---|
+| `seri_kode` | `string` | Kode seri BPS atau WDI (`AG.LND.FRST.K2`, `AG.LND.FRST.ZS`, `EN.ATM.PM25.MC.M3`, dll.). |
+| `rincian` | `string` | Rincian dimensi (misal: `total`, `tutupan=hutan`, `komponen=iku`). |
+| `sumber` | `string` | Asal penerbit data (`bps` atau `wdi`). |
+| `periode` | `string` | Tahun observasi (1990–2025). |
+| `jenis_periode` | `string` | Frekuensi observasi (`tahun`). |
+| `nilai` | `float64` | Nilai metrik nasional. |
+| `satuan` | `string` | Satuan metrik (`km2`, `persen`, `ribu_hektar`, `indeks`, `mikrogram_per_m3`). |
+| `asal` | `string` | `baris_indonesia` (disediakan langsung oleh BPS) atau `pembanding` (berasal dari WDI). |
+| `_berkas_raw` | `string` | Lineage berkas mentah asal baris nasional ini. |
+| `_sha256_raw` | `string` | Lineage hash SHA-256 berkas mentah. |
 
 ---
 
-## 5. Contoh Penelusuran Satu Baris (*Lineage Audit Trail*)
+## 4. Tabel Gold: `data/gold/rekonsiliasi.parquet` (Rekonsiliasi BPS vs WDI)
 
-Setiap baris data pada tabel Silver dapat diverifikasi keabsahannya hingga ke berkas fisik mentah asalnya. Berikut adalah contoh audit penelusuran satu baris data konkret:
+* **Definisi Satu Baris:** Satu baris merepresentasikan komparasi antara **seri utama nasional (BPS)** dan **seri pembanding (WDI / FAO)** untuk periode tahun yang sama.
+* **Kunci Unik (*Composite Primary Key*):** `pasangan_id`, `seri_pembanding`, `rincian_pembanding`, `periode`.
 
-### Baris Data Terpilih di `silver.parquet`:
+| Nama Kolom | Tipe Data | Keterangan & Asal |
+|---|:---:|---|
+| `pasangan_id` | `string` | ID Pasangan rekonsiliasi (`P1`, `P2`, `P3`, `P4`) merujuk `reports/pasangan-rekonsiliasi.md`. |
+| `jenis` | `string` | `selisih` (dihitung angka deviasinya) atau `konteks` (disandingkan sebagai latar belakang). |
+| `seri_utama` | `string` | Seri data nasional rujukan utama (BPS / KLHK). |
+| `rincian_utama` | `string` | Rincian dimensi seri utama yang diperbandingkan. |
+| `seri_pembanding` | `string` | Seri data pembanding internasional (WDI / World Bank / FAO). |
+| `rincian_pembanding` | `string` | Rincian dimensi seri pembanding (`total`). |
+| `periode` | `string` | Tahun pengamatan yang beririsan. |
+| `nilai_utama` | `float64` | Nilai dari seri utama nasional (sudah disetarakan satuannya jika diperlukan). |
+| `nilai_pembanding`| `float64` | Nilai dari seri pembanding internasional. |
+| `selisih` | `float64` | Hasil perhitungan: $\text{nilai\_utama} - \text{nilai\_pembanding}$. |
+| `persen_selisih` | `float64` | Persentase deviasi terhadap seri pembanding: $(\text{selisih} / \text{nilai\_pembanding}) \times 100\%$. |
+| `kategori` | `string` | Klasifikasi penyebab selisih baku (misal: `definisi_berbeda`, `metodologi_berbeda`, `vintage_berbeda`, `identik`). |
+| `penjelasan` | `string` | Narasi argumentatif mengenai latar belakang penyebab timbulnya selisih data. |
+
+---
+
+## 5. Ringkasan Pasangan Rekonsiliasi (Kasus 20)
+
+| ID Pasangan | Seri Utama (BPS/Nasional) | Seri Pembanding (WDI) | Jenis | Kategori Dugaan Selisih | Alasan Keterbandingan |
+|:---:|---|---|:---:|---|---|
+| **P1** | `tabel:sdg15_tutupan_hutan:luas_ribu_ha` [tutupan=hutan] | `AG.LND.FRST.K2` | `selisih` | `definisi_berbeda` | KLHK memakai citra satelit tutupan hutan, sedangkan FAO (WDI) memakai definisi kanopi pohon $\ge 5$m tanpa perkebunan sawit. Faktor konversi: 1 ribu ha = 10 km². |
+| **P2** | `tabel:sdg15_tutupan_hutan:persen` [tutupan=hutan] | `AG.LND.FRST.ZS` | `selisih` | `metodologi_berbeda` | BPS menghitung persentase terhadap total tutupan daratan provinsi, WDI menghitung terhadap total luas daratan (*land area*). |
+| **P3** | `var1304` [kawasan=kawasan_hutan] | `tabel:sdg15_tutupan_hutan:luas_ribu_ha` [tutupan=hutan] | `selisih` | `definisi_berbeda` | Penutupan hutan di dalam kawasan hutan negara vs total penutupan hutan daratan nasional. |
+| **P4** | `var2532` [komponen=iku] | `EN.ATM.PM25.MC.M3` | `konteks` | `tidak_dapat_dibandingkan` | IKU adalah indeks komposit kualitas udara (skala 0–100), sedangkan WDI mengukur konsentrasi partikulat debu halus PM2.5 ($\mu g/m^3$). |
+
+---
+
+## 6. Contoh Penelusuran Silsilah Data (*Lineage Audit Trail*)
+
+Setiap baris data pada tabel Silver maupun Gold dapat diverifikasi keabsahannya hingga ke berkas fisik mentah asalnya:
+
+### Contoh Baris Data di `silver.parquet`:
 ```python
 {
     'sumber': 'bps',
     'seri_kode': 'tabel:sdg15_tutupan_hutan:luas_ribu_ha',
     'wilayah_kode': 1100,
-    'nama_wilayah': 'ACEH',
+    'nama_wilayah': 'Aceh',
     'periode': '2014',
     'jenis_periode': 'tahun',
     'rincian': 'total',
@@ -98,16 +128,6 @@ Setiap baris data pada tabel Silver dapat diverifikasi keabsahannya hingga ke be
     '_sha256_raw': '93f5d2d2ce3e9f5db97fd8409fa658f08c9cadd44634c7d1f8b3ee1234861bd1'
 }
 ```
-
-### Langkah Pembuktian Silsilah (*Step-by-Step*):
-1. **Identifikasi Berkas Sumber:** Kolom `_berkas_raw` merujuk langsung ke berkas fisik `data/raw/bps/2026-10-17/sdg15_tutupan_hutan.csv`.
-2. **Pencocokan Integritas Kriptografis:**
-   * Di dalam berkas `data/raw/MANIFEST.csv`, berkas `bps/2026-10-17/sdg15_tutupan_hutan.csv` memiliki catatan hash:
-     $$\texttt{93f5d2d2ce3e9f5db97fd8409fa658f08c9cadd44634c7d1f8b3ee1234861bd1}$$
-   * Nilai ini cocok 100% dengan kolom `_sha256_raw` pada baris data, membuktikan bahwa data diekstrak dari berkas asli yang tidak pernah dimanipulasi sejak diunduh.
-3. **Pencocokan Nilai pada Berkas Mentah:**
-   * Membuka berkas `data/raw/bps/2026-10-17/sdg15_tutupan_hutan.csv` pada baris wilayah `ACEH`, tahun `2014`, tutupan `jumlah`, ukuran `luas_ribu_ha`:
-     ```csv
-     ACEH,2014,jumlah,luas_ribu_ha,5647.3,,
-     ```
-   * Nilai mentah adalah `5647.3` dengan rincian `jumlah` yang dipetakan menjadi `total`. Terbukti nilai pada Silver persis sama dan setia pada sumber aslinya.
+* **Verifikasi Berkas:** Menunjuk ke berkas mentah `data/raw/bps/2026-10-17/sdg15_tutupan_hutan.csv`.
+* **Integritas Berkas:** Nilai hash `_sha256_raw` cocok 100% dengan entri di `data/raw/MANIFEST.csv`.
+* **Penelusuran ke Gold:** Pada `data/gold/panel.parquet`, baris di atas tertelusur menjadi indikator `tabel:sdg15_tutupan_hutan:luas_ribu_ha` wilayah `1100` tahun `2014` dengan nilai `5647.3` dan status `terisi`.
