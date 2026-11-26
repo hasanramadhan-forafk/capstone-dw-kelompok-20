@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# Data Dictionary — Tim FORESTIQ (Kasus 20: Hutan, Lahan, dan Lingkungan)
-=======
-# Data dictionary — <MBG : Memang Banyak tuGas>
->>>>>>> 9e733cd (mengerjakan tugas 10)
+# Data Dictionary — MBG : Memang Banyak tuGas (Kasus 20: Hutan, Lahan, dan Lingkungan)
 
 Dokumen ini mendokumentasikan skema, tipe data, satuan, definisi, serta silsilah data (*data lineage*) untuk tabel **Silver** (`data/silver/silver.parquet`). Kolom Gold akan ditambahkan pada Sprint 2–3.
 
