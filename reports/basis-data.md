@@ -32,4 +32,4 @@ DuckDB dipilih karena satu berkas tanpa server (*serverless*), mendukung eksekus
 
 | pertanyaan | tabel_silver | dokumen_json | ms_silver | ms_dokumen | catatan |
 |---|---|---|---|---|---|
-| berapa angka var1304 di `bps/2026-10-17/json/sdg15_tutupan_kawasan.json` | 627 | 627 | 4.59 | 32.55 | dokumen menghitung semua kunci datacontent pada JSON bersarang (termasuk sel kosong/non-panel); tabel Silver hanya baris observasi tervalidasi |
+| berapa angka var1304 di `bps/2026-10-17/json/sdg15_tutupan_kawasan.json` | 627 | 627 | 5.53 | 43.50 | dokumen menghitung semua kunci datacontent pada JSON bersarang (termasuk sel kosong/non-panel); tabel Silver hanya baris observasi tervalidasi |
