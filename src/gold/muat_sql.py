@@ -266,6 +266,11 @@ def jalankan(silver=None, gold=None):
         "dan tidak memiliki kunci primer tingkat observasi.",
         tabel_md(banding) if len(banding) else "Tidak ada berkas JSON BPS untuk dibandingkan.",
     ]))
+    print(
+        f"SQL DuckDB ({ukuran / 1e6:.2f} MB): seri={n_seri}, silver={n['silver']}, "
+        f"gold_panel={n['gold_panel']}, gold_nasional={n['gold_nasional']}, "
+        f"rekonsiliasi={n['rekonsiliasi']}, dokumen_mentah={n_dok} (uji PK {tabel_uji}: {tolak})"
+    )
     return n
 
 
