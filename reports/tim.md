@@ -14,6 +14,13 @@ Sebanyak 13 berkas mentah yang tercatat pada `data/raw/MANIFEST.csv` berhasil di
 
 Seluruh baris observasi di Silver memiliki kolom penelusuran asal (`_berkas_raw`) dan sidik jari kriptografis (`_sha256_raw`) yang dipetakan langsung dari MANIFEST tanpa intervensi manual.
 
+### Penyimpanan Basis Data (Tabel Relasional vs Dokumen)
+
+Lapis Silver (`seri`, `silver`) dan Gold (`gold_panel`, `gold_nasional`, `rekonsiliasi`) dimuat ulang setiap kali `python pipeline.py` dijalankan ke basis data **DuckDB** (`data/gold/gudang.duckdb`, tidak di-commit karena dibentuk ulang oleh pipeline) berdasarkan DDL di `src/gold/silver.sql` dan `src/gold/gold.sql`, dengan verifikasi jumlah baris yang sama persis terhadap berkas Parquet-nya.
+
+- **Mengapa DuckDB:** Beroperasi dalam satu berkas lokal tanpa server (*serverless*) sehingga setiap anggota dan pemeriksa cukup menjalankan `python pipeline.py`, mendukung kueri analitik kolumnar (agregasi, *pivot*, *join*) dengan cepat, serta terintegrasi langsung dengan format Parquet.
+- **Tabel Relasional vs Dokumen JSON:** Berkas respons mentah BPS dan WDI disimpan apa adanya pada tabel `dokumen_mentah` (`isi JSON`) sebagai pembanding (hasil perbandingan kueri di `reports/basis-data.md`). Pendekatan **dokumen** cocok untuk arsip lapis Bronze karena menjaga struktur hierarkis dan metadata asli (`var`, `vervar`, `turvar`), namun lambat/rumit diurai saat agregasi dan tidak bisa menegakkan keunikan tingkat sel. Sebaliknya, **tabel relasional** cocok untuk Silver dan Gold karena analisis selalu berdimensi `seri × wilayah × periode × rincian`, serta memungkinkan penegakan kunci primer komposit (menolak sel ganda), *foreign key* ke `seri`, dan batasan `CHECK` pada wilayah, status sel, kategori rekonsiliasi, serta konsistensi selisih.
+
 ## Masalah data dan penanganannya
 
 Rangkuman keputusan pembersihan data, penanganan anomali, serta standardisasi yang diambil selama Sprint 1 tercatat secara berurutan di `log-keputusan.csv` (K-001 s.d. K-031):
@@ -53,11 +60,16 @@ Rangkuman keputusan pembersihan data, penanganan anomali, serta standardisasi ya
 
 ## Integrasi dan rekonsiliasi
 
-Telah disusun tabel nasional periode × seri (1990–2025) di `reports/tabel-nasional.csv` dan pemetaan 4 pasangan rekonsiliasi di `reports/pasangan-rekonsiliasi.md`:
-- **P1 (Luas Hutan)**: `tabel:sdg15_tutupan_hutan:luas_ribu_ha` vs WDI `AG.LND.FRST.K2` (10 tahun beririsan: 2014–2023). Kategori selisih: definisi (tutupan lahan berhutan KLHK vs definisi FAO pohon $\ge 5\text{ m}$ tanpa perkebunan) setelah konversi satuan $1\text{ ribu ha} = 10\text{ km}^2$.
-- **P2 (Persentase Hutan)**: `tabel:sdg15_tutupan_hutan:persen` vs WDI `AG.LND.FRST.ZS` (10 tahun beririsan: 2014–2023). Kategori selisih: perbedaan penyebut (BPS menggunakan total luas penutupan lahan provinsi, WDI menggunakan luas daratan/land area).
-- **P3 (Kualitas Udara)**: `var2532` (komponen IKU) vs WDI `EN.ATM.PM25.MC.M3` (5 tahun beririsan: 2019–2023). Kategori: kontekstual arah berlawanan (IKU semakin tinggi semakin baik, PM2.5 semakin tinggi semakin tercemar).
-- **P4 (Kawasan vs Tutupan)**: `var1304` vs `tabel:sdg15_tutupan_hutan:luas_ribu_ha` (6 tahun beririsan: 2014–2018, 2023). Kategori: dua tabel dari sumber yang sama (rekalkulasi KLHK) dengan pembagian kategori berbeda (status penetapan kawasan vs kondisi biofisik tutupan).
+Tabel nasional Gold (`data/gold/nasional.parquet`, 184 baris dari 8 seri, 1990–2025) menyandingkan seri utama nasional BPS dengan pembanding WDI, dan tabel rekonsiliasi berkategori (`data/gold/rekonsiliasi.parquet`, 36 baris; rincian di `reports/rekonsiliasi.md`) menghitung selisih pada periode beririsan tanpa menghapus maupun memaksa angka menjadi sama. Median selisih relatif mutlak untuk pasangan seri utama provinsi adalah **0,29%** (26 baris berpasangan selisih).
+
+| Pasangan | Yang dibandingkan | Median selisih relatif | Kategori | Penjelasan |
+|---|---|---|---|---|
+| P1 | Luas hutan nasional: BPS (ribu ha) vs WDI (`AG.LND.FRST.K2`, km²) | 0,38% | definisi berbeda (9), tidak berselisih (1) | Tutupan lahan berhutan KLHK vs definisi FAO (pohon ≥ 5 m, tanpa perkebunan) setelah konversi WDI km² × 0,1 menjadi ribu hektar |
+| P2 | Persentase hutan: BPS (terhadap penutupan lahan) vs WDI (`AG.LND.FRST.ZS`, terhadap luas daratan) | 0,83% | definisi berbeda (10) | Penyebut berbeda: total luas penutupan lahan (BPS) vs total luas daratan (*land area*, WDI) |
+| P3 | Indeks kualitas udara (`var2532` IKU) vs PM2.5 (`EN.ATM.PM25.MC.M3`): konteks | — | definisi berbeda (6) | Pasangan kontekstual berarah berlawanan (IKU tinggi = baik; PM2.5 tinggi = buruk); selisih tidak dihitung |
+| P4 | Kawasan hutan (`var1304`) vs tutupan hutan (`tabel:sdg15_tutupan_hutan:luas_ribu_ha`) | 0,00% | tidak berselisih (6), tanpa pasangan (4) | Sumber sama (rekalkulasi KLHK) dengan klasifikasi berbeda; jumlah luas identik pada 6 tahun beririsan (`2014–2018`, `2023`) dan `tanpa pasangan` pada `2019–2022` |
+
+Periode pembanding di luar rentang tahun seri utama tidak ditulis (P1: 26 tahun, P2: 25 tahun, P3: 29 tahun), sedangkan seluruh periode seri utama tetap tampil termasuk yang tanpa pasangan.
 
 ## Validasi dan reproduksibilitas
 

@@ -121,3 +121,13 @@ PASANGAN = [
          jenis="selisih", kategori="sumber sama (rekalkulasi KLHK); jumlah luas seharusnya sama", alasan_rincian="rincian jumlah",
          pertanyaan=[("Apa beda keduanya?", "var1304 dipecah menurut status kawasan, tabel statis menurut hutan/non hutan; jumlahnya luas yang sama.")]),
 ]
+
+# ------------------------------------------------------------------ Sprint 2: Gold dan rekonsiliasi
+# Kategori baku setiap pasangan ditetapkan dari bukti Sprint 1 (pertanyaan keterbandingan di atas),
+# tidak diturunkan dari teks.
+KATEGORI_BAKU = {"P1": "definisi berbeda", "P2": "definisi berbeda", "P3": "definisi berbeda", "P4": "belum terjelaskan"}
+
+# P1: WDI km2, tabel KLHK ribu hektar: 1 km2 = 100 ha = 0,1 ribu ha.
+GOLD_KONVERSI = {("km2", "ribu_hektar"): 0.1}
+for _p in PASANGAN:
+    _p["kategori_baku"] = KATEGORI_BAKU[_p["id"]]
