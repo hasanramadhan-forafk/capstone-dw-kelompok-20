@@ -13,6 +13,7 @@ melainkan "mengerti atau tidak" — isi kolom terakhir dengan apa yang Anda ubah
 | 2026-11-20 | 124450013 | Gemini | Penyusunan isi `docs/data-dictionary.md` untuk seluruh kolom Silver | Menyesuaikan contoh baris penelusuran lineage dengan nilai nyata dari `silver.parquet` repo tim |
 | 2026-11-20 | 124450013 | Gemini | Draf komentar pelaporan ke dosen pembimbing (validasi, data dictionary, penutupan sprint) | Mempersingkat menjadi format ringkas dan menyesuaikan tautan branch dengan nama branch aktif tim |
 | 2026-11-20 | 124450013 | Gemini | Penyusunan naskah DEMO.md Sprint 1 | menyusun kerangka naskah 5 menit |
+| 2026-11-21 | 124450087 | Claude | Merancang skema SQL  Sprint 1 | mengubah data tabular (tabel parquet) menjadi struktur database relasional |
 | 2026-11-25 | 124450013 | Gemini | Rancangan modul validasi Gold dan Rekonsiliasi `src/validasi/gold.py` (Sprint 2) | Menghilangkan ketergantungan impor internal referensi (`src.gold.rekonsiliasi`, `src.silver.deret`); menyederhanakan validasi toleransi selisih floating-point |
 | 2026-11-25 | 124450013 | Gemini | Integrasi validasi Gold ke `src/validasi/__init__.py` dan penanganan error tabulate | Menambahkan blok try-except fallback ke `to_string()` jika paket tabulate belum terpasang agar pipeline tidak crash |
 | 2026-11-25 | 124450013 | Gemini | Pembaruan kamus data `docs/data-dictionary.md` dengan skema Gold (panel, nasional, rekonsiliasi) | Menyesuaikan penjelasan dimensi indikator dan status sel dengan konteks Kasus 20 tim |

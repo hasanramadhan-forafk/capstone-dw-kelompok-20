@@ -9,6 +9,13 @@ import pandas as pd
 
 STATUS_SAH = {"terisi", "missing", "tidak_diterbitkan", "belum_ada", "batas_lama"}
 KATEGORI_SAH = {
+    "definisi berbeda",
+    "metode berbeda",
+    "vintage berbeda",
+    "cakupan berbeda",
+    "belum terjelaskan",
+    "tanpa pasangan",
+    "tidak berselisih",
     "definisi_berbeda",
     "metodologi_berbeda",
     "vintage_berbeda",
