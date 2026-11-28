@@ -1,6 +1,6 @@
 # Laporan tim — MBG : Memang Banyak tuGas, kasus 20 Hutan, lahan, dan lingkungan
 
-Status: draf akhir Sprint 1. Angka dapat ditarik ulang dari `data/silver/silver.parquet`, `reports/`, dan `log-keputusan.csv` (id K-xxx).
+Status: draf akhir Sprint 2. Angka dapat ditarik ulang dari `data/silver/silver.parquet`, `data/gold/`, `reports/`, dan `log-keputusan.csv` (id K-xxx).
 
 ## Ringkasan
 
@@ -87,3 +87,31 @@ Pipeline validasi dijalankan secara terpadu melalui skrip `pipeline.py`:
 | Farhanah Hadaya Fatin | 124450026 | Transformasi dan panel | Reproduksi & Demo | Transformasi Silver, uji reproduksi |
 | Melva Shaprina Febrianti | 124450087 | Integrasi, penyimpanan, dan skala | Analis Utama | Masalah data dan penanganannya, integrasi & rekonsiliasi |
 | Raisya Izzati Harira | 124450122 | Profil dan pembersihan | Integrator | Ringkasan, profil per seri, klasifikasi anomali |
+
+---
+
+## Sprint 2: Gold, rekonsiliasi, dan validasi
+
+**Sprint Goal.** Setiap sel panel Gold yang terisi punya satu nilai yang tertelusur ke Silver, setiap
+indikator punya satu satuan baku, Silver dan Gold tersimpan di DuckDB dengan kunci yang menolak sel
+ganda, dan setiap baris rekonsiliasi berpasangan punya kategori serta penjelasan.
+
+### Bukti ketiga butir Definition of Done
+
+1. **Panel Gold provinsi x periode x indikator.** `python pipeline.py` menulis
+   `data/gold/panel.parquet` (2.616 baris, 12 indikator, 5 seri) dan `data/gold/panel_lebar.parquet`
+   (474 baris provinsi x tahun). Kunci `indikator + wilayah_kode + periode` diperiksa otomatis dan
+   lolos; setiap sel terisi tertelusur ke baris Silver asal lewat `_berkas_raw`.
+2. **Silver dan Gold di SQL.** `data/gold/gudang.duckdb` memuat tabel `silver` (3.940 baris),
+   `gold_panel` (2.616), `gold_nasional` (184), dan `rekonsiliasi` (116). Skema ada di
+   `src/gold/silver.sql` dan `src/gold/gold.sql`; alasan memilih DuckDB ada di `reports/basis-data.md`.
+3. **Rekonsiliasi seri utama vs pembanding nasional.** `reports/rekonsiliasi.md` memuat 4 pasangan
+   (P1 luas hutan, P2 persen hutan, P3 kualitas udara kontekstual, P4 kawasan vs tutupan), 25 baris
+   berpasangan, dan 20 selisih terhitung. Setiap baris berpasangan punya kategori dan penjelasan.
+
+### Validasi
+
+`reports/validasi.md`: 17 aturan, **16 LOLOS, 0 GAGAL, 1 PERINGATAN** (anomali 2020 yang sudah
+dikoreksi di Silver). Aturan Gold dan rekonsiliasi berjalan dari `validasi.jalankan(silver, gold)`.
+Metrik: `results/124450013/metrics.json` (`aturan_validasi=17`, `aturan_lolos=16`,
+`aturan_peringatan=1`, `berkas_terverifikasi=13`).

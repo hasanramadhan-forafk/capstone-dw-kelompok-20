@@ -25,6 +25,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.laporan import catat, tabel_md, tulis
+
 ROOT = Path(__file__).resolve().parents[2]
 SILVER = ROOT / "data" / "silver" / "silver.parquet"
 GOLD = ROOT / "data" / "gold"
@@ -289,7 +291,21 @@ def jalankan(silver) -> dict:
     h = bangun(silver)
     GOLD.mkdir(parents=True, exist_ok=True)
     OUT_TABEL.mkdir(parents=True, exist_ok=True)
+    # Kolom baku untuk validasi Gold: periode (string) dan satuan (bukan hanya satuan_baku).
+    # Panel Gold hanya memuat sel terisi; sel kosong tetap berada di grid Silver.
+    h["panel"] = h["panel"].assign(
+        periode=h["panel"]["tahun"].astype(str),
+        satuan=h["panel"]["satuan_baku"],
+        status_sel="terisi",
+        jenis_periode="tahun",
+    )
+    h["nasional"] = h["nasional"].assign(
+        periode=h["nasional"]["tahun"].astype(str),
+        satuan=h["nasional"]["satuan_baku"],
+        jenis_periode="tahun",
+    )
     h["panel"].to_parquet(GOLD / "panel_provinsi.parquet", index=False)
+    h["panel"].to_parquet(GOLD / "panel.parquet", index=False)
     h["nasional"].to_parquet(GOLD / "nasional.parquet", index=False)
     cols = [c for c in ["sumber", "seri_kode", "rincian", "wilayah_kode", "periode", "nilai", "satuan", "_berkas_raw", "alasan"]
             if c in h["tak_terpilih"].columns]
@@ -301,6 +317,31 @@ def jalankan(silver) -> dict:
         print(f"  {a}: {n}")
     print(f"  WDI ditambahkan: {r['baris_wdi_ditambahkan']} baris (nilai kosong dilewati: {r['nilai_kosong_wdi_dilewati']})")
     print(f"  perbaikan galat diterapkan: {r['perbaikan_diterapkan']} | penanda terbawa: {r['penanda_terbawa']} | revisi: {r['sel_revisi']}")
+    p = h["panel"]
+    ringkas = (p.groupby(["indikator", "satuan"])
+               .agg(periode=("periode", lambda s: f"{s.min()}-{s.max()}" if s.nunique() > 1 else s.min()),
+                    jumlah_periode=("periode", "nunique"), sel=("nilai", "size"),
+                    terisi=("nilai", "count"), ditandai=("penanda", lambda s: int((s.astype(str) != "").sum())))
+               .reset_index())
+    catat(seri_panel=int(p["indikator"].nunique()), baris_gold=len(p), sel_gold_terisi=int(p["nilai"].notna().sum()),
+          sel_gold_ditandai=int((p["penanda"].astype(str) != "").sum()),
+          silver_tidak_terpilih=int(r["baris_silver_tak_terpilih"]))
+    tulis("panel-gold.md", "\n\n".join([
+        "# Panel Gold provinsi x periode x indikator",
+        "Dihasilkan `python pipeline.py` (`src/gold/pilih.py` dan `src/gold/lebar.py`) dari Silver.",
+        "## Aturan satu nilai per sel",
+        "1. Snapshot terbaru dipakai; angka berbeda antar snapshot dicatat sebagai revisi.\n"
+        "2. CSV didahulukan atas JSON bila snapshot sama.\n"
+        "3. Rincian turunan (non_hutan, APL, total var1304/var588) tetap di Silver.\n"
+        "4. Satuan luas dibakukan ke ribu_hektar.\n"
+        "5. Baris Indonesia (9999) dipisah ke tabel nasional.\n"
+        "6. Penanda anomali Sprint 1 terbawa; tidak ada nilai yang dihapus.",
+        f"Panel panjang: **{len(p):,} baris**, {p['indikator'].nunique()} indikator, "
+        f"{p['seri_kode'].nunique()} seri. Panel lebar: `data/gold/panel_lebar.parquet`.",
+        "## Indikator", tabel_md(ringkas),
+        "Kunci panel: `indikator + wilayah_kode + periode`; setiap sel terisi tertelusur ke Silver "
+        "lewat `_berkas_raw`. Diperiksa otomatis di `reports/validasi.md`.",
+    ]))
     return h
 
 

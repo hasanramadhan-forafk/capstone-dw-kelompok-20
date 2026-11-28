@@ -1,8 +1,14 @@
-| Waktu | Topik | Yang Ditampilkan (Layar) | Narasi Singkat |
-| :---: | --- | --- | --- |
-| 00:00 – 00:30<br>(30 dtk) | Pembukaan & Sprint Goal | Buka `sprint/sprint-1/sprint-goal.md` | "Halo, kami dari Tim MBG : Memang Banyak tuGas mempresentasikan hasil Sprint 1 untuk Kasus 20: Hutan, Lahan, dan Lingkungan (SDG 11 & 15). Sprint Goal kami adalah membangun pipeline otomatis dari data mentah hingga tabel Silver yang tervalidasi dan ber-lineage lengkap." |
-| 00:30 – 01:30<br>(60 dtk) | Integritas Data & Pipeline Satu Perintah | 1. Terminal: `python unduh_data.py --kasus 20`<br>2. Terminal: `python pipeline.py` | "Pertama, seluruh 13 berkas mentah berhasil diunduh dan diverifikasi cocok 100% terhadap MANIFEST.csv lewat hash SHA-256. Kemudian, dengan satu perintah `python pipeline.py`, seluruh proses ekstraksi, transformasi Silver, hingga validasi berjalan otomatis dan selesai dalam hitungan detik." |
-| 01:30 – 02:30<br>(60 dtk) | Uji Skema Silver & Bukti Lineage | 1. Terminal: `python -m src.common.skema data/silver/silver.parquet`<br>2. Buka `docs/data-dictionary.md` (Bagian 5) | "Tabel Silver yang dihasilkan lolos pengujian skema minimal tanpa ada nilai kosong pada kolom kunci. Setiap baris data memiliki silsilah (lineage) kriptografis: `_berkas_raw` dan `_sha256_raw`, sehingga angka di Silver dapat ditelusuri balik secara akurat ke berkas asalnya di `data/raw/`." |
-| 02:30 – 03:45<br>(75 dtk) | Temuan Kualitas Data & Log Keputusan | Buka `reports/klasifikasi_anomali.md` dan `log-keputusan.csv` | "Kami menemukan beberapa anomali kritis di data sumber BPS: kolom 2020 tutupan hutan tertukar antarsiklus 25 provinsi tetangga urutan, serta adanya selisih pada data DIY 2016. Seluruh penanganan dicatat transparan di `log-keputusan.csv`: pergeseran 2020 dikoreksi (K-024), satuan hektar diseragamkan ke ribu hektar (K-002), dan deduplikasi CSV BPS diterapkan (K-010)." |
-| 03:45 – 04:30<br>(45 dtk) | Validasi Dasar Silver | Buka `reports/validasi.md` atau hasil terminal | "Validasi Silver mengevaluasi 9 aturan: 8 aturan keras lolos 100% (luas non-negatif, rentang persen 0-100, keunikan kunci primer, keseragaman satuan, dan konsistensi rincian lahan kritis). 1 aturan kasus mendeteksi peringatan anomali kolom 2020 yang sudah terdokumentasi." |
-| 04:30 – 05:00<br>(30 dtk) | Bukti Artefak & Rencana Sprint 2 | Buka `results/124450013/metrics.json` | "Seluruh anggota tim telah meng-commit `metrics.json` dengan `data_hash` yang identik sebagai bukti artefak yang valid. Tim MBG : Memang Banyak tuGas siap melanjutkan ke Sprint 2 untuk menyusun panel Gold dan rekonsiliasi nasional BPS vs WDI. Terima kasih." |
+# Naskah Demo Sprint 2 (±4 Menit) — Tim MBG (Kasus 20)
+
+| Menit | Topik | Perintah / Berkas | Narasi Singkat |
+|:---:|---|---|---|
+| **00:00–00:30** | Pembukaan | `sprint/sprint-2/sprint-goal.md` | Perkenalan Tim MBG (Kasus 20) dan 3 target Sprint 2: Panel Gold, DuckDB, dan Rekonsiliasi. |
+| **00:30–01:45** | Eksekusi Pipeline | `python pipeline.py` | Jalankan satu perintah: 13 berkas cocok `MANIFEST.csv` $\to$ Silver (3.940 baris) $\to$ Gold (Panel, Nasional, Rekonsiliasi, DuckDB) $\to$ Validasi. |
+| **01:45–03:00** | Panel, DuckDB & Rekonsiliasi | `reports/basis-data.md` & `reports/rekonsiliasi.md` | Tunjukkan panel 2.616 baris, bukti PK DuckDB menolak duplikat, dan ringkasan selisih BPS vs WDI. |
+| **03:00–04:00** | Validasi & Penutup | `reports/validasi.md` & `results/124450013/metrics.json` | Tunjukkan 17 aturan validasi (16 `LOLOS`, 1 `PERINGATAN` 2020, 0 `GAGAL`) dan metrik tercatat. |
+
+### Perintah Uji Reproduksi:
+```bash
+python unduh_data.py --kasus 20
+python pipeline.py
+```
