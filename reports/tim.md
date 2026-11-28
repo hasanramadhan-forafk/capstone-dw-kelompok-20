@@ -1,7 +1,5 @@
 # Laporan tim — MBG : Memang Banyak tuGas, kasus 20 Hutan, lahan, dan lingkungan
 
-Status: draf akhir Sprint 2. Angka dapat ditarik ulang dari `data/silver/silver.parquet`, `data/gold/`, `reports/`, dan `log-keputusan.csv` (id K-xxx).
-
 ## Ringkasan
 
 Kasus 20 (Hutan, lahan, dan lingkungan) mengintegrasikan tabel statis tutupan hutan (luas dan persen), tiga seri dinamis BPS (penutupan lahan menurut status kawasan `var1304`, luas lahan kritis `var588`, dan komponen penyusun IKLH `var2532`), serta tiga seri pembanding WDI (`AG.LND.FRST.K2`, `AG.LND.FRST.ZS`, dan `EN.ATM.PM25.MC.M3`). Dataset Silver pertama memuat 3.940 baris BPS yang lolos uji skema minimal dan berhasil dimuat ke basis data relasional DuckDB. Temuan terpenting pada Sprint 1 adalah terdeteksinya galat sistematis pada berkas mentah: kolom tahun 2020 pada tabel tutupan hutan tertukar antarprovinsi yang berhasil dibuktikan dan direkonstruksi secara matematis melalui relasi jumlah komponen dan persentase luas.
@@ -60,16 +58,43 @@ Rangkuman keputusan pembersihan data, penanganan anomali, serta standardisasi ya
 
 ## Integrasi dan rekonsiliasi
 
-Tabel nasional Gold (`data/gold/nasional.parquet`, 184 baris dari 8 seri, 1990–2025) menyandingkan seri utama nasional BPS dengan pembanding WDI, dan tabel rekonsiliasi berkategori (`data/gold/rekonsiliasi.parquet`, 36 baris; rincian di `reports/rekonsiliasi.md`) menghitung selisih pada periode beririsan tanpa menghapus maupun memaksa angka menjadi sama. Median selisih relatif mutlak untuk pasangan seri utama provinsi adalah **0,29%** (26 baris berpasangan selisih).
+Tabel nasional Gold (`data/gold/nasional.parquet`) memuat 184 baris dari 8 seri (1990–2025): seri utama nasional BPS dan tiga seri pembanding WDI, semuanya berwilayah 9999 dan bersatuan baku (K-037, K-039). Tabel rekonsiliasi (`data/gold/rekonsiliasi.parquet`, 36 baris; rincian per baris di `reports/rekonsiliasi.md`) menyandingkan empat pasangan pada periode beririsan. Selisih = nilai utama − nilai pembanding, dan selisih relatif dinyatakan dalam persen terhadap pembanding. Setiap baris membawa kategori dan penjelasan (tidak ada yang kosong). Periode yang hanya ada di satu sisi tetap tampil, dan tidak ada selisih yang dihapus atau dipaksa sama (K-043).
 
-| Pasangan | Yang dibandingkan | Median selisih relatif | Kategori | Penjelasan |
-|---|---|---|---|---|
-| P1 | Luas hutan nasional: BPS (ribu ha) vs WDI (`AG.LND.FRST.K2`, km²) | 0,38% | definisi berbeda (9), tidak berselisih (1) | Tutupan lahan berhutan KLHK vs definisi FAO (pohon ≥ 5 m, tanpa perkebunan) setelah konversi WDI km² × 0,1 menjadi ribu hektar |
-| P2 | Persentase hutan: BPS (terhadap penutupan lahan) vs WDI (`AG.LND.FRST.ZS`, terhadap luas daratan) | 0,83% | definisi berbeda (10) | Penyebut berbeda: total luas penutupan lahan (BPS) vs total luas daratan (*land area*, WDI) |
-| P3 | Indeks kualitas udara (`var2532` IKU) vs PM2.5 (`EN.ATM.PM25.MC.M3`): konteks | — | definisi berbeda (6) | Pasangan kontekstual berarah berlawanan (IKU tinggi = baik; PM2.5 tinggi = buruk); selisih tidak dihitung |
-| P4 | Kawasan hutan (`var1304`) vs tutupan hutan (`tabel:sdg15_tutupan_hutan:luas_ribu_ha`) | 0,00% | tidak berselisih (6), tanpa pasangan (4) | Sumber sama (rekalkulasi KLHK) dengan klasifikasi berbeda; jumlah luas identik pada 6 tahun beririsan (`2014–2018`, `2023`) dan `tanpa pasangan` pada `2019–2022` |
+### Pasangan yang dibandingkan dan besar selisihnya
 
-Periode pembanding di luar rentang tahun seri utama tidak ditulis (P1: 26 tahun, P2: 25 tahun, P3: 29 tahun), sedangkan seluruh periode seri utama tetap tampil termasuk yang tanpa pasangan.
+| Pasangan | Yang dibandingkan | Periode | Median selisih relatif | Rentang selisih | Kategori baris |
+|---|---|---|---|---|---|
+| P1 | Luas hutan nasional: BPS (`tabel:sdg15_tutupan_hutan:luas_ribu_ha`, ribu ha) vs WDI (`AG.LND.FRST.K2`, km² × 0,1) | 2014–2023, 10 berpasangan | 0,38% | −1,91% (2018) s.d. +0,51% (2014); −1.822,1 s.d. +483,0 ribu ha | definisi berbeda (9), tidak berselisih (1) |
+| P2 | Persentase hutan: BPS (terhadap penutupan lahan) vs WDI (`AG.LND.FRST.ZS`, terhadap luas daratan) | 2014–2023, 10 berpasangan | 0,83% | −1,94% (2018) s.d. +1,23% (2022); −0,98 s.d. +0,62 poin persen | definisi berbeda (10) |
+| P3 | Indeks kualitas udara (`var2532`, komponen IKU) vs PM2,5 (`EN.ATM.PM25.MC.M3`): pasangan konteks | 2019–2024, 5 berpasangan, 1 hanya sisi BPS (2024) | tidak dihitung | tidak dihitung | definisi berbeda (6) |
+| P4 | Kawasan hutan (`var1304`, total) vs tutupan hutan (tabel statis, luas, total): dua tabel KLHK | 2014–2023, 6 berpasangan, 4 tanpa pasangan | 0,00% | 0,00 pada keenam tahun | tidak berselisih (6), tanpa pasangan (4) |
+
+Pada 26 baris yang selisihnya dihitung (P1 10, P2 10, P4 6), median selisih relatif mutlak adalah **0,29%**. Angka itu tertarik ke bawah oleh enam selisih nol pada P4: untuk P1 dan P2 saja (20 baris) median-nya 0,50%, dan 8 dari 20 baris melewati 1% (P1: 2017–2019; P2: 2017–2019, 2022, 2023). Selisih terbesar jatuh pada 2018 di kedua pasangan (−1,91% dan −1,94%), yaitu tahun ketika nilai BPS paling rendah dalam deretnya (93.526,2 ribu ha; 49,8%). Deret WDI bergerak lebih sempit (95.027,9–95.806,3 ribu ha) daripada deret BPS (93.526,2–96.231,4 ribu ha). Pola ini sejalan dengan perbedaan definisi, tetapi tidak membuktikannya.
+
+### Penjelasan tiap kategori
+
+- **Definisi berbeda (25 baris: P1 9, P2 10, P3 6).** Kedua sisi mengukur hal yang berbeda menurut definisinya, sehingga selisih bukan galat salah satu sisi. P1: BPS memakai kelas penutupan lahan hutan menurut KLHK, WDI memakai definisi FAO (pohon setinggi ≥ 5 m, tanpa perkebunan); satuan sudah diseragamkan lebih dulu (1 km² = 0,1 ribu ha, K-044), jadi selisih bukan efek satuan. P2: penyebut BPS adalah jumlah luas penutupan lahan provinsi, penyebut WDI adalah luas daratan (`% of land area`). P3: IKU tinggi berarti udara baik, PM2,5 tinggi berarti buruk, dan skalanya berbeda (IKU 86,56–88,67 vs PM2,5 18,86–23,97 µg/m³ pada 2019–2023), maka kedua nilai hanya ditampilkan berdampingan dan selisihnya tidak dihitung (K-030). Pada 2024 hanya ada nilai IKU (90,13) karena seri PM2,5 di tabel nasional berakhir 2023; baris itu mengikuti kategori pasangan konteks.
+- **Tidak berselisih (7 baris: P1 2020, P4 enam tahun).** Angka kedua sisi sama persis (selisih 0,00). P1 2020: 95.561,9 ribu ha di BPS dan WDI setelah konversi; hanya satu tahun, jadi kategori pasangan P1 tetap definisi berbeda. P4 2014–2018 dan 2023: total kawasan hutan `var1304` sama dengan luas tutupan hutan tabel statis (187.751,9 ribu ha pada 2014–2018; 187.938,7 pada 2023), sesuai dengan sumber yang sama (rekalkulasi KLHK). Di tingkat provinsi, total kedua tabel juga sama pada 209 pasangan provinsi-tahun (K-003).
+- **Tanpa pasangan (4 baris: P4 2019–2022).** Periode yang nilainya ada di satu sisi saja: tabel statis memuat 187.751,9; 187.751,9; 187.679,1; dan 187.587,9 ribu ha, tetapi `var1304` tidak punya nilai nasional pada tahun itu (hanya 2014–2018 dan 2023). Sisi yang kosong tidak diisi atau diinterpolasi (K-039, K-043), jadi selisihnya tidak dihitung.
+- Kategori baku lain (metode berbeda, vintage berbeda, cakupan berbeda, belum terjelaskan) tidak dipakai pada baris mana pun (0 baris).
+
+### Keterbatasan
+
+- Kategori ditetapkan dari bukti definisi di Sprint 1 (K-030), bukan dari besar selisihnya (K-043). Kemungkinan bahwa sebagian selisih P1 dan P2 berasal dari perbedaan rilis (vintage) WDI belum diuji; itu menunggu arsip rilis WDI pada tahap skala.
+- Kategori baku pasangan P4 di `src/konfigurasi.py` masih `belum terjelaskan` (K-043), padahal seluruh selisih yang dihitung bernilai nol sehingga baris-barisnya berkategori tidak berselisih; tidak ada selisih P4 yang tersisa untuk dijelaskan.
+- Perbandingan memakai total nasional, jadi koreksi blok 2020 antarprovinsi (K-024) tidak mengubah angka P1, P2, dan P4 (jumlah nasional tidak berubah).
+- Periode pembanding di luar rentang tahun seri utama tidak ditulis (P1: 26 tahun, P2: 25 tahun, P3: 29 tahun), sedangkan seluruh periode seri utama tetap tampil termasuk yang tanpa pasangan. Nilai kosong WDI dilewati, tidak diisi (93 baris, K-039).
+
+### Penelusuran angka
+
+| Angka di bagian ini | Cara menarik ulang |
+|---|---|
+| 184 baris, 8 seri, 1990–2025 | `nasional.parquet`: `len`, `seri_kode.nunique()`, `tahun.min()/max()` |
+| 36 baris, 4 pasangan, tidak ada kategori atau penjelasan kosong | `rekonsiliasi.parquet`: `len`, `pasangan_id.nunique()`, `kategori.isna()`, `penjelasan.isna()` |
+| Baris per kategori (25, 7, 4) dan per pasangan | `rekonsiliasi.parquet`: `groupby(["pasangan_id", "kategori", "asal"]).size()` |
+| Median, rentang, dan jumlah selisih > 1% | `rekonsiliasi.parquet`: `selisih_relatif.abs()` dan `selisih`, per `pasangan_id` (baris dengan nilai terisi) |
+| Periode di luar rentang (26, 25, 29) | tahun pembanding di `nasional.parquet` dikurangi periode berpasangan di `rekonsiliasi.parquet` |
+| Konversi km² → ribu ha, kategori pasangan, 209 pasangan, 93 baris WDI | `log-keputusan.csv`: K-044, K-043 dan K-030, K-003, K-039 |
 
 ## Validasi dan reproduksibilitas
 
@@ -87,31 +112,3 @@ Pipeline validasi dijalankan secara terpadu melalui skrip `pipeline.py`:
 | Farhanah Hadaya Fatin | 124450026 | Transformasi dan panel | Reproduksi & Demo | Transformasi Silver, uji reproduksi |
 | Melva Shaprina Febrianti | 124450087 | Integrasi, penyimpanan, dan skala | Analis Utama | Masalah data dan penanganannya, integrasi & rekonsiliasi |
 | Raisya Izzati Harira | 124450122 | Profil dan pembersihan | Integrator | Ringkasan, profil per seri, klasifikasi anomali |
-
----
-
-## Sprint 2: Gold, rekonsiliasi, dan validasi
-
-**Sprint Goal.** Setiap sel panel Gold yang terisi punya satu nilai yang tertelusur ke Silver, setiap
-indikator punya satu satuan baku, Silver dan Gold tersimpan di DuckDB dengan kunci yang menolak sel
-ganda, dan setiap baris rekonsiliasi berpasangan punya kategori serta penjelasan.
-
-### Bukti ketiga butir Definition of Done
-
-1. **Panel Gold provinsi x periode x indikator.** `python pipeline.py` menulis
-   `data/gold/panel.parquet` (2.616 baris, 12 indikator, 5 seri) dan `data/gold/panel_lebar.parquet`
-   (474 baris provinsi x tahun). Kunci `indikator + wilayah_kode + periode` diperiksa otomatis dan
-   lolos; setiap sel terisi tertelusur ke baris Silver asal lewat `_berkas_raw`.
-2. **Silver dan Gold di SQL.** `data/gold/gudang.duckdb` memuat tabel `silver` (3.940 baris),
-   `gold_panel` (2.616), `gold_nasional` (184), dan `rekonsiliasi` (116). Skema ada di
-   `src/gold/silver.sql` dan `src/gold/gold.sql`; alasan memilih DuckDB ada di `reports/basis-data.md`.
-3. **Rekonsiliasi seri utama vs pembanding nasional.** `reports/rekonsiliasi.md` memuat 4 pasangan
-   (P1 luas hutan, P2 persen hutan, P3 kualitas udara kontekstual, P4 kawasan vs tutupan), 25 baris
-   berpasangan, dan 20 selisih terhitung. Setiap baris berpasangan punya kategori dan penjelasan.
-
-### Validasi
-
-`reports/validasi.md`: 17 aturan, **16 LOLOS, 0 GAGAL, 1 PERINGATAN** (anomali 2020 yang sudah
-dikoreksi di Silver). Aturan Gold dan rekonsiliasi berjalan dari `validasi.jalankan(silver, gold)`.
-Metrik: `results/124450013/metrics.json` (`aturan_validasi=17`, `aturan_lolos=16`,
-`aturan_peringatan=1`, `berkas_terverifikasi=13`).
