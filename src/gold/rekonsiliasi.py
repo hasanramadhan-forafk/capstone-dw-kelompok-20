@@ -1,217 +1,307 @@
-"""Tahap 6 - Tabel rekonsiliasi seri utama vs pembanding nasional.
+"""Tahap 6 — Tabel rekonsiliasi seri utama vs pembanding nasional.
 
-Untuk setiap pasangan di ``konfigurasi.PASANGAN`` dan setiap seri pembandingnya, satu baris per
-periode yang ada di salah satu sisi (gabung luar). Selisih = nilai utama - nilai pembanding sesudah
-satuan disamakan. Selisih tidak dihapus dan tidak dipaksa sama.
+Untuk setiap pasangan di `PASANGAN` (konfigurasi) dan setiap seri pembandingnya, satu baris per periode yang
+ada di salah satu sisi (gabung luar: periode tanpa pasangan tetap tampil). Kolom: nilai utama, nilai
+pembanding (sesudah disamakan satuannya), selisih = utama − pembanding, selisih relatif terhadap pembanding,
+asal baris, kategori, dan penjelasan. Selisih tidak dihapus dan tidak dipaksa sama.
 
-Setiap baris berpasangan (``asal == "keduanya"``) wajib punya kategori baku dan penjelasan. Baris
-yang hanya ada di satu sisi diberi kategori ``tanpa pasangan``. Kategori pasangan ditetapkan dari
-bukti Sprint 1, bukan dari besar selisihnya.
+Kategori baku: definisi berbeda, metode berbeda, vintage berbeda, cakupan berbeda, belum terjelaskan,
+tanpa pasangan, tidak berselisih. Kategori pasangan ditetapkan di konfigurasi (`kategori_baku`); bila tidak
+ada, diturunkan dari teks `kategori`. Baris satu sisi = `tanpa pasangan`; baris dengan selisih nol =
+`tidak berselisih`. Pasangan berjenis `konteks` tidak dihitung selisihnya: kedua nilai ditampilkan
+berdampingan dengan kategori dan alasannya.
+
+Keluaran: data/gold/rekonsiliasi.parquet dan reports/rekonsiliasi.md.
 """
-from pathlib import Path
-
 import pandas as pd
 
 from src import konfigurasi as K
+from src import wilayah as W
 from src.laporan import ROOT, catat, tabel_md, tulis
 
-KATEGORI = (
-    "definisi berbeda",
-    "metode berbeda",
-    "vintage berbeda",
-    "cakupan berbeda",
-    "konteks berbeda",
-    "belum terjelaskan",
-    "tanpa pasangan",
-    "tidak berselisih",
-)
-
-# Kategori baku tiap pasangan (bukti: reports/pasangan-rekonsiliasi.md Sprint 1).
-KATEGORI_BAKU = {
-    "P1": "definisi berbeda",
-    "P2": "definisi berbeda",
-    "P3": "konteks berbeda",
-    "P4": "belum terjelaskan",
-}
-
-# 1 km2 = 100 ha = 0,1 ribu hektar.
-KONVERSI = {("km2", "ribu_hektar"): 0.1}
-
-# Nama rincian di konfigurasi vs rincian yang dipakai Gold (pilih.py).
-ALIAS_RINCIAN = {
-    "tutupan=hutan": "hutan",
-    "tutupan=non_hutan": "non_hutan",
-    "komponen=iku": "kualitas_udara",
-    "komponen=ika": "kualitas_air",
-    "komponen=iktl": "kualitas_tutupan_lahan",
-    "komponen=ikl": "kualitas_lahan",
-    "komponen=ikeg": "kualitas_ekosistem_gambut",
-    "komponen=ikal": "kualitas_air_laut",
-}
-
-KOLOM = [
-    "pasangan_id", "jenis", "seri_utama", "rincian_utama", "seri_pembanding",
-    "rincian_pembanding", "periode", "nilai_utama", "nilai_pembanding", "satuan",
-    "selisih", "selisih_relatif", "asal", "kategori", "penjelasan", "catatan",
-]
+KATEGORI = ("definisi berbeda", "metode berbeda", "vintage berbeda", "cakupan berbeda", "belum terjelaskan",
+            "tanpa pasangan", "tidak berselisih")
+KATA = [("vintage", "vintage berbeda"), ("rilis", "vintage berbeda"), ("cakupan", "cakupan berbeda"),
+        ("populasi", "cakupan berbeda"), ("definisi", "definisi berbeda"), ("penyebut", "definisi berbeda"),
+        ("metode", "metode berbeda"), ("sumber", "metode berbeda"), ("pembulatan", "metode berbeda"),
+        ("olahan", "metode berbeda"), ("pengolahan", "metode berbeda")]
+KOLOM = ["pasangan_id", "jenis", "seri_utama", "rincian_utama", "seri_pembanding", "rincian_pembanding", "periode",
+         "nilai_utama", "nilai_pembanding", "satuan", "selisih", "selisih_relatif", "asal", "kategori", "penjelasan",
+         "catatan"]
 TOLERANSI = 1e-9
+DI_LUAR = {}
+
+RINCIAN_PADANAN = {
+    "tutupan=hutan": {"tutupan=hutan", "hutan"},
+    "tutupan=non_hutan": {"tutupan=non_hutan", "non_hutan"},
+    "komponen=iku": {"komponen=iku", "kualitas_udara"},
+    "komponen=ika": {"komponen=ika", "kualitas_air"},
+    "komponen=iktl": {"komponen=iktl", "kualitas_tutupan_lahan"},
+}
 
 
-def _normalisasi(nasional: pd.DataFrame) -> pd.DataFrame:
-    n = nasional.copy()
-    if "periode" not in n.columns:
-        n["periode"] = n["tahun"].astype(str)
+def _siapkan_tabel_nasional(nasional, silver=None):
+    """Normalisasi kolom nasional Gold (mendukung skema pilih.py maupun skema Sprint 2) + fallback Silver nasional."""
+    df = nasional.copy()
+    if "periode" not in df.columns and "tahun" in df.columns:
+        df["periode"] = df["tahun"].astype(int).astype(str)
+    if "satuan" not in df.columns and "satuan_baku" in df.columns:
+        df["satuan"] = df["satuan_baku"]
+    df["periode"] = df["periode"].astype(str)
+    df = df[["seri_kode", "rincian", "periode", "nilai", "satuan"]].copy()
+
+    # Lengkapi rincian nasional yang tetap disimpan di Silver saja (mis. total var1304 untuk P4)
+    if silver is None:
+        silver_path = ROOT / "data" / "silver" / "silver.parquet"
+        if silver_path.exists():
+            silver = pd.read_parquet(silver_path)
+    if isinstance(silver, pd.DataFrame) and not silver.empty:
+        s_nas = silver[silver["wilayah_kode"] == W.INDONESIA][["seri_kode", "rincian", "periode", "nilai", "satuan"]].copy()
+        s_nas["periode"] = s_nas["periode"].astype(str)
+        ada = set(zip(df["seri_kode"], df["rincian"], df["periode"]))
+        ekstra = s_nas[[(s, r, p) not in ada for s, r, p in zip(s_nas["seri_kode"], s_nas["rincian"], s_nas["periode"])]]
+        if not ekstra.empty:
+            df = pd.concat([df, ekstra], ignore_index=True)
+    return df
+
+
+def kategori_pasangan(p):
+    if p.get("kategori_baku"):
+        if p["kategori_baku"] not in KATEGORI:
+            raise ValueError(f"{p['id']}: kategori_baku {p['kategori_baku']!r} bukan kategori baku")
+        return p["kategori_baku"]
+    t = p["kategori"].lower()
+    kena = [(t.find(k), v) for k, v in KATA if k in t]
+    return min(kena)[1] if kena else "belum terjelaskan"
+
+
+def sisi(nasional, seri, rincian, semester=None):
+    kandidat_rincian = RINCIAN_PADANAN.get(rincian, {rincian})
+    s = nasional[(nasional["seri_kode"] == seri) & (nasional["rincian"].isin(kandidat_rincian))][
+        ["periode", "nilai", "satuan"]
+    ]
+    if semester:
+        s = s[s["periode"].str.len().eq(4) | s["periode"].str.endswith(f"-{semester}")]
+        s = s.assign(periode=s["periode"].str[:4]).drop_duplicates("periode")
     else:
-        n["periode"] = n["periode"].astype(str)
-    if "satuan" not in n.columns:
-        n["satuan"] = n["satuan_baku"]
-    return n
+        s = s.drop_duplicates("periode")
+    return s
 
 
-def sisi(nasional: pd.DataFrame, seri: str, rincian: str) -> pd.DataFrame:
-    """Ambil satu sisi rekonsiliasi: periode, nilai, satuan (satu baris per periode)."""
-    r = ALIAS_RINCIAN.get(rincian, rincian)
-    s = nasional[(nasional["seri_kode"] == seri) & (nasional["rincian"] == r)]
-    s = s[["periode", "nilai", "satuan"]].drop_duplicates("periode")
-    return s.sort_values("periode").reset_index(drop=True)
+def rata_jendela(b, tahun_utama, n):
+    nilai = dict(zip(b["periode"], b["nilai"]))
+    baris = []
+    for t in tahun_utama:
+        th = [str(int(t) - k) for k in range(1, n + 1)]
+        if len(t) == 4 and all(x in nilai for x in th):
+            baris.append({"periode": t, "nilai": sum(nilai[x] for x in th) / n,
+                          "satuan": b["satuan"].iloc[0], "jendela": f"{th[-1]}–{th[0]}"})
+    return pd.DataFrame(baris, columns=["periode", "nilai", "satuan", "jendela"])
 
 
-def _faktor(dari, ke):
+def faktor(dari, ke):
     if dari == ke:
         return 1.0
-    return KONVERSI.get((dari, ke))
+    return getattr(K, "GOLD_KONVERSI", {}).get((dari, ke))
 
 
-def _kategori(p: dict, asal: str, selisih, faktor) -> str:
-    if asal != "keduanya":
-        return "tanpa pasangan"
-    if p["jenis"] != "selisih":
-        return KATEGORI_BAKU.get(p["id"], "konteks berbeda")
-    if faktor is None:
-        return "belum terjelaskan"
-    if selisih is not None and abs(selisih) <= TOLERANSI:
-        return "tidak berselisih"
-    return KATEGORI_BAKU.get(p["id"], "belum terjelaskan")
+def _jumlah(bagian):
+    if not bagian or any(b.empty for b in bagian):
+        return pd.DataFrame(columns=["periode", "nilai", "satuan"])
+    g = bagian[0][["periode", "nilai"]]
+    for b in bagian[1:]:
+        g = g.merge(b[["periode", "nilai"]], on="periode", suffixes=("", "_x"))
+        g["nilai"] = g["nilai"] + g.pop("nilai_x")
+    return g.assign(satuan=bagian[0]["satuan"].iloc[0])
 
 
-def satu_pasangan(nasional: pd.DataFrame, p: dict) -> list:
+def sisi_utama(nasional, p):
     utama = p["utama"].split(",")[0].strip()
-    rincian_utama = p.get("rincian_utama", "total")
-    a = sisi(nasional, utama, rincian_utama)
-    # Satuan aktual di Gold didahulukan: pilih.py sudah menyeragamkan luas ke ribu_hektar.
-    satuan_u = (a["satuan"].iloc[0] if len(a)
-                else K.SERI.get(utama, {}).get("satuan"))
+    daftar = p.get("rincian_utama_jumlah")
+    if daftar:
+        return _jumlah([sisi(nasional, utama, r, p.get("semester_utama")) for r in daftar])
+    return sisi(nasional, utama, p.get("rincian_utama", "total"), p.get("semester_utama"))
 
+
+def _seri_b(seri, p):
+    return f"{seri} (agregat provinsi)" if p.get("pembanding_agregat") else seri
+
+
+def daftar_pembanding(nasional, p, satuan_u):
+    h = p.get("hitung_pembanding")
+    if not p["pembanding"]:
+        return [("", "", None, None, None)]
+    if not h:
+        hasil = []
+        for seri, r in p["pembanding"]:
+            b = sisi(nasional, _seri_b(seri, p), r)
+            satuan_tabel = b["satuan"].iloc[0] if len(b) else None
+            satuan_asal = K.SERI.get(seri, {}).get("satuan")
+            ket = None
+            if p.get("pembanding_agregat"):
+                ket = "agregat provinsi (GOLD_AGREGAT)"
+            elif satuan_tabel and satuan_asal and satuan_tabel != satuan_asal and satuan_tabel == satuan_u:
+                ket = f"satuan pembanding sudah dikonversi di Gold ({satuan_asal} → {satuan_tabel}, faktor {faktor(satuan_asal, satuan_tabel):g})"
+            satuan = satuan_tabel or satuan_asal
+            hasil.append((_seri_b(seri, p), r, b, satuan, ket))
+        return hasil
+    bagian = [sisi(nasional, _seri_b(s, p), r) for s, r in p["pembanding"]]
+    cara = h["cara"]
+    if cara == "jumlah":
+        b = _jumlah(bagian)
+    elif cara == "per":
+        atas, bawah = _jumlah(bagian[:-1]), bagian[-1]
+        b = atas.merge(bawah[["periode", "nilai"]], on="periode", suffixes=("", "_penyebut"))
+        b["nilai"] = b["nilai"] / b.pop("nilai_penyebut") * h.get("skala", 1)
+    elif cara == "laju":
+        s = bagian[0].sort_values("periode")
+        s = s[s["periode"].str.len() == 4]
+        prev = dict(zip((s["periode"].astype(int) + 1).astype(str), s["nilai"]))
+        b = s.assign(nilai=[100 * (v / prev[t] - 1) if t in prev and prev[t] else None
+                            for t, v in zip(s["periode"], s["nilai"])]).dropna(subset=["nilai"])
+    else:
+        raise ValueError(f"{p['id']}: cara hitung_pembanding {cara!r} tidak dikenal")
+    b = b.assign(satuan=satuan_u)[["periode", "nilai", "satuan"]]
+    return [(h.get("label", " + ".join(s for s, _ in p["pembanding"])), "hitung", b, satuan_u, h["keterangan"])]
+
+
+def tahun_terdekat(a, b, maks):
+    nilai = {int(x): v for x, v in zip(b["periode"], b["nilai"]) if len(x) == 4}
     baris = []
-    for seri_b, rincian_b in p["pembanding"]:
-        b = sisi(nasional, seri_b, rincian_b)
-        satuan_b = (b["satuan"].iloc[0] if len(b)
-                    else K.SERI.get(seri_b, {}).get("satuan"))
-        faktor = _faktor(satuan_b, satuan_u) if seri_b else None
-        gabung = a.merge(b, on="periode", how="outer", suffixes=("_u", "_b"), indicator=True)
-        gabung = gabung.sort_values("periode")
+    for t in a["periode"]:
+        if len(t) != 4 or not nilai:
+            continue
+        y = min(nilai, key=lambda x: (abs(x - int(t)), x))
+        if abs(y - int(t)) <= maks:
+            baris.append({"periode": t, "nilai": nilai[y], "satuan": b["satuan"].iloc[0], "tahun": str(y)})
+    return pd.DataFrame(baris, columns=["periode", "nilai", "satuan", "tahun"])
 
-        for r in gabung.to_dict("records"):
-            asal = {"both": "keduanya", "left_only": "hanya_utama", "right_only": "hanya_pembanding"}[r["_merge"]]
-            nilai_u = None if pd.isna(r["nilai_u"]) else float(r["nilai_u"])
-            nilai_b = None if pd.isna(r["nilai_b"]) else float(r["nilai_b"])
+
+def satu_pasangan(nasional, p):
+    utama = p["utama"].split(",")[0].strip()
+    ru = p.get("rincian_utama", "total")
+    if p.get("rincian_utama_jumlah"):
+        ru = " + ".join(p["rincian_utama_jumlah"])
+    kat = kategori_pasangan(p)
+    a = sisi_utama(nasional, p)
+    satuan_u = K.SERI.get(utama, {}).get("satuan") or (a["satuan"].iloc[0] if len(a) else None)
+    proyeksi = getattr(K, "PROYEKSI", {})
+    baris = []
+    for seri_b, rb, b, satuan_b, ket in daftar_pembanding(nasional, p, satuan_u):
+        if b is None:
+            b = a.iloc[0:0]
+        tambahan = {}
+        if seri_b and p.get("jendela_pembanding"):
+            b = rata_jendela(b, list(a["periode"]), p["jendela_pembanding"])
+            tambahan = {t: f"pembanding = rata-rata {j} (jendela rujukan survei)" for t, j in zip(b["periode"], b["jendela"])}
+            b = b.drop(columns="jendela")
+        elif seri_b and p.get("tahun_terdekat") and not set(a["periode"]) & set(b["periode"]):
+            b = tahun_terdekat(a, b, p["tahun_terdekat"])
+            tambahan = {t: f"pembanding tahun {y} (tidak ada tahun yang sama; tahun terdekat)"
+                        for t, y in zip(b["periode"], b["tahun"])}
+            b = b.drop(columns="tahun")
+        f = faktor(satuan_b, satuan_u) if seri_b else None
+        g = a.merge(b, on="periode", how="outer", suffixes=("_u", "_b"), indicator="gabung").sort_values("periode")
+        if len(a):
+            luar = (g["gabung"] == "right_only") & ((g["periode"] < a["periode"].min()) | (g["periode"] > a["periode"].max()))
+            DI_LUAR[p["id"]] = DI_LUAR.get(p["id"], 0) + int(luar.sum())
+            g = g[~luar]
+        for r in g.itertuples():
+            asal = {"both": "keduanya", "left_only": "hanya_utama", "right_only": "hanya_pembanding"}[r.gabung]
+            nu = r.nilai_u if pd.notna(r.nilai_u) else None
+            nb = r.nilai_b * f if pd.notna(r.nilai_b) and f is not None else (r.nilai_b if pd.notna(r.nilai_b) else None)
             catatan = []
-            if nilai_b is not None and faktor not in (None, 1.0):
-                nilai_b = nilai_b * faktor
-                catatan.append(f"pembanding dikali {faktor:g} ({satuan_b} -> {satuan_u})")
-
-            selisih = None
-            selisih_relatif = None
-            if asal == "keduanya" and p["jenis"] == "selisih" and faktor is not None:
-                selisih = nilai_u - nilai_b
-                if nilai_b not in (None, 0):
-                    selisih_relatif = 100 * selisih / nilai_b
-            elif asal == "keduanya" and p["jenis"] != "selisih":
+            if ket and nb is not None:
+                catatan.append(ket)
+            if r.periode in tambahan:
+                catatan.append(tambahan[r.periode])
+            if f not in (None, 1.0) and nb is not None:
+                catatan.append(f"pembanding dikali {f:g} ({satuan_b} → {satuan_u})")
+            sel = rel = None
+            k = kat
+            if asal != "keduanya":
+                k = "tanpa pasangan" if p["jenis"] == "selisih" else kat
+            elif r.periode in proyeksi.get(seri_b, set()) or r.periode in proyeksi.get(utama, set()):
+                k = "tanpa pasangan"
+                catatan.append("tahun proyeksi, tidak dibandingkan")
+            elif p["jenis"] != "selisih":
                 catatan.append("pasangan konteks: selisih tidak dihitung")
-            elif asal == "keduanya" and faktor is None:
+            elif f is None:
                 catatan.append(f"satuan berbeda ({satuan_b} vs {satuan_u}) tanpa faktor konversi")
-
-            kategori = _kategori(p, asal, selisih, faktor)
-            if asal == "hanya_utama":
-                penjelasan = f"{p['kategori']}; periode ini hanya ada di seri utama."
-            elif asal == "hanya_pembanding":
-                penjelasan = f"{p['kategori']}; periode ini hanya ada di seri pembanding."
             else:
-                penjelasan = p["kategori"]
-
-            baris.append({
-                "pasangan_id": p["id"], "jenis": p["jenis"], "seri_utama": utama,
-                "rincian_utama": rincian_utama, "seri_pembanding": seri_b,
-                "rincian_pembanding": rincian_b, "periode": r["periode"],
-                "nilai_utama": nilai_u, "nilai_pembanding": nilai_b, "satuan": satuan_u,
-                "selisih": selisih, "selisih_relatif": selisih_relatif, "asal": asal,
-                "kategori": kategori, "penjelasan": penjelasan,
-                "catatan": "; ".join(catatan) or None,
-            })
+                sel = nu - nb
+                rel = 100 * sel / nb if nb else None
+                if abs(sel) <= TOLERANSI:
+                    k = "tidak berselisih"
+            baris.append({"pasangan_id": p["id"], "jenis": p["jenis"], "seri_utama": utama, "rincian_utama": ru,
+                          "seri_pembanding": seri_b, "rincian_pembanding": rb, "periode": r.periode,
+                          "nilai_utama": nu, "nilai_pembanding": nb, "satuan": satuan_u, "selisih": sel,
+                          "selisih_relatif": rel, "asal": asal, "kategori": k, "penjelasan": p["kategori"],
+                          "catatan": "; ".join(catatan) or None})
     return baris
 
 
-def jalankan(nasional: pd.DataFrame) -> pd.DataFrame:
-    n = _normalisasi(nasional)
-    rows = [b for p in K.PASANGAN for b in satu_pasangan(n, p)]
+def jalankan(nasional=None, silver=None):
+    if nasional is None:
+        nasional = pd.read_parquet(ROOT / "data" / "gold" / "nasional.parquet")
+    nas_siap = _siapkan_tabel_nasional(nasional, silver)
+    DI_LUAR.clear()
+    rows = [b for p in K.PASANGAN for b in satu_pasangan(nas_siap, p)]
     t = pd.DataFrame(rows, columns=KOLOM)
     for c in ("nilai_utama", "nilai_pembanding", "selisih", "selisih_relatif"):
-        t[c] = pd.to_numeric(t[c], errors="coerce")
+        t[c] = t[c].astype("float64")
+    (ROOT / "data" / "gold").mkdir(parents=True, exist_ok=True)
+    t.to_parquet(ROOT / "data" / "gold" / "rekonsiliasi.parquet", index=False)
 
-    tujuan = ROOT / "data" / "gold" / "rekonsiliasi.parquet"
-    tujuan.parent.mkdir(parents=True, exist_ok=True)
-    t.to_parquet(tujuan, index=False)
-
-    berpasangan = t[t["asal"] == "keduanya"]
-    dihitung = t[t["selisih"].notna()]
-    ring = (
-        t.groupby(["pasangan_id", "seri_pembanding"], sort=False)
-        .agg(jenis=("jenis", "first"), periode=("periode", "size"),
-             berpasangan=("asal", lambda s: int((s == "keduanya").sum())),
-             selisih_dihitung=("selisih", lambda s: int(s.notna().sum())),
-             median_selisih_relatif=("selisih_relatif", lambda s: s.abs().median()),
-             kategori=("kategori", lambda s: ", ".join(f"{k} ({v})" for k, v in s.value_counts().items())))
-        .reset_index()
-    )
-
+    hitung = t[t["selisih"].notna()]
+    ring = (t.groupby(["pasangan_id", "seri_pembanding"], sort=False)
+            .agg(jenis=("jenis", "first"), periode=("periode", "size"),
+                 berpasangan=("asal", lambda s: int((s == "keduanya").sum())),
+                 selisih_dihitung=("selisih", lambda s: int(s.notna().sum())),
+                 median_selisih=("selisih", "median"),
+                 median_selisih_relatif=("selisih_relatif", lambda s: s.abs().median()),
+                 kategori=("kategori", lambda s: ", ".join(f"{k} ({n})" for k, n in s.value_counts().items())))
+            .reset_index())
     bagian = []
     for p in K.PASANGAN:
-        isi = t[t["pasangan_id"] == p["id"]][
-            ["seri_pembanding", "periode", "nilai_utama", "nilai_pembanding", "selisih",
-             "selisih_relatif", "asal", "kategori", "catatan"]
-        ]
+        tp = t[t["pasangan_id"] == p["id"]]
+        isi = tp[["seri_pembanding", "periode", "nilai_utama", "nilai_pembanding", "selisih", "selisih_relatif",
+                  "asal", "kategori", "catatan"]]
         bagian.append("\n\n".join([
             f"### {p['id']}: {p['judul']}",
-            f"Jenis **{p['jenis']}**; kategori baku: **{KATEGORI_BAKU.get(p['id'], 'belum terjelaskan')}**. "
-            f"{p['kategori'][0].upper()}{p['kategori'][1:]}.",
+            f"Jenis **{p['jenis']}**; kategori pasangan: **{kategori_pasangan(p)}**. {p['kategori'][0].upper()}{p['kategori'][1:]}.",
+            f"Rincian: {p.get('alasan_rincian', '—')}.",
             tabel_md(isi, 2),
         ]))
-
-    med = float(dihitung["selisih_relatif"].abs().median()) if len(dihitung) else 0.0
-    catat(
-        baris_rekonsiliasi=len(t),
-        baris_rekonsiliasi_berpasangan=len(berpasangan),
-        selisih_dihitung=len(dihitung),
-        selisih_median_relatif=round(med, 2),
-        rekonsiliasi_tanpa_pasangan=int((t["kategori"] == "tanpa pasangan").sum()),
-        rekonsiliasi_kategori=int(t["kategori"].nunique()),
-        **{f"rek_{pid.lower()}_berpasangan": int(g["asal"].eq("keduanya").sum())
-           for pid, g in t.groupby("pasangan_id")},
-        **{f"rek_{pid.lower()}_dihitung": int(g["selisih"].notna().sum())
-           for pid, g in t.groupby("pasangan_id")},
-    )
+    tingkat = {k: v["tingkat"] for k, v in K.SERI.items()}
+    utama_prov = hitung[hitung["seri_utama"].map(tingkat).eq("provinsi")]
+    dasar = utama_prov if len(utama_prov) else hitung
+    med = float(dasar["selisih_relatif"].abs().median()) if len(dasar) else None
+    med_semua = float(hitung["selisih_relatif"].abs().median()) if len(hitung) else None
+    catat(baris_rekonsiliasi=len(t), selisih_dihitung=len(hitung),
+          selisih_median=round(med, 2) if med is not None else 0.0,
+          selisih_median_semua=round(med_semua, 2) if med_semua is not None else 0.0,
+          selisih_utama_dihitung=len(utama_prov),
+          baris_tanpa_pasangan=int((t["kategori"] == "tanpa pasangan").sum()),
+          kategori_dipakai=int(t["kategori"].nunique()),
+          **{f"rek_{pid.lower()}_median": round(float(g["selisih_relatif"].abs().median()), 1)
+             for pid, g in hitung.groupby("pasangan_id")},
+          **{f"rek_{pid.lower()}_dihitung": int(g["selisih"].notna().sum()) for pid, g in t.groupby("pasangan_id")})
     tulis("rekonsiliasi.md", "\n\n".join([
         "# Tabel rekonsiliasi seri utama vs pembanding nasional",
-        "Dihasilkan `python pipeline.py` (`src/gold/rekonsiliasi.py`) dari tabel nasional Gold. "
-        "Selisih = nilai utama - nilai pembanding sesudah satuan disamakan; selisih relatif dalam persen "
-        "terhadap pembanding. Periode tanpa pasangan tetap ditampilkan, tidak dihapus.",
+        "Dihasilkan `python pipeline.py` (`src/gold/rekonsiliasi.py`) dari `data/gold/nasional.parquet`. Selisih = "
+        "nilai utama − nilai pembanding; selisih relatif dalam persen terhadap pembanding. Periode tanpa pasangan "
+        "tetap ditampilkan. Selisih tidak dihapus dan tidak dipaksa sama.",
         "## Ringkasan per pasangan", tabel_md(ring, 2),
-        f"Baris berpasangan: {len(berpasangan)}; selisih dihitung: {len(dihitung)}; "
-        f"median selisih relatif mutlak: {med:.2f}%.",
-        "## Kategori",
-        "Kategori baku: " + ", ".join(f"*{k}*" for k in KATEGORI) + ". Setiap baris berpasangan "
-        "(`asal = keduanya`) wajib punya kategori dan penjelasan; ini diperiksa otomatis oleh "
-        "`src/validasi/gold.py`.",
+        (f"Median selisih relatif mutlak, pasangan yang seri utamanya seri provinsi (BPS/BNPB): {med:.2f}% "
+         f"({len(dasar)} baris); semua pasangan termasuk antarpembanding: {med_semua:.2f}% ({len(hitung)} baris)."
+         if len(utama_prov) else f"Median selisih relatif mutlak (semua baris yang dihitung): {med:.2f}%.")
+        if med is not None else "Tidak ada baris yang selisihnya dapat dihitung.",
+        "Periode pembanding di luar rentang seri utama yang tidak ditulis: "
+        + (", ".join(f"{k} {v}" for k, v in DI_LUAR.items() if v) or "tidak ada") + ".",
+        "## Kategori", "Kategori baku: " + ", ".join(f"*{k}*" for k in KATEGORI) + ". Kategori pasangan ditetapkan dari "
+        "bukti di pasangan rekonsiliasi Sprint 1 (`reports/pasangan-rekonsiliasi.md`); baris satu sisi menjadi *tanpa "
+        "pasangan*, baris yang angkanya sama menjadi *tidak berselisih*.",
         "## Rincian per pasangan", *bagian,
     ]))
     return t

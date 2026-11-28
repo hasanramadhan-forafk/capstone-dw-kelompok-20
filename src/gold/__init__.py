@@ -1,33 +1,23 @@
-"""Tahap 4-6 - Reshape, integrasi, dan penyimpanan ke Gold (pertemuan VII, IX, XI, XII).
+"""Tahap 4–6 — Reshape, integrasi, dan penyimpanan ke Gold (pertemuan VII, IX, XI, XII).
 
-Sprint 2: panel provinsi x periode x indikator (satu nilai per sel), tabel nasional, tabel
-rekonsiliasi seri utama vs pembanding nasional, panel lebar, dan Silver + Gold di DuckDB.
+Sprint 1: tabel nasional dan daftar pasangan rekonsiliasi (`nasional.py`).
+Sprint 2: pemilihan satu nilai per sel (`pilih.py`) -> panel provinsi & nasional (`lebar.py`),
+          tabel rekonsiliasi berkategori (`rekonsiliasi.py`), dan pemuatan Silver + Gold ke DuckDB (`muat_sql.py`).
 """
 import pandas as pd
 
-from src.gold import lebar, muat_sql, pilih, rekonsiliasi
+from src.gold import lebar, muat_sql, nasional, pilih, rekonsiliasi
 
 
 def jalankan(silver=None):
-    """Terima Silver, tulis tabel Gold, kembalikan {nama_tabel: DataFrame}.
-
-    Kunci ``panel``, ``nasional``, dan ``rekonsiliasi`` dipakai langsung oleh
-    ``src.validasi.jalankan(silver, gold)``.
-    """
-    silver = silver if silver is not None else pilih.SILVER
-    if not isinstance(silver, pd.DataFrame):
-        silver = pd.read_parquet(silver)
-    g = pilih.jalankan(silver)
-    panel, nasional = g["panel"], g["nasional"]
-    rek = rekonsiliasi.jalankan(nasional)
-    lebar_hasil = lebar.jalankan(panel)
-    baris_sql = muat_sql.jalankan(silver, {"panel": panel, "nasional": nasional, "rekonsiliasi": rek})
-    return {
-        "panel": panel,
-        "nasional": nasional,
-        "rekonsiliasi": rek,
-        "panel_lebar": lebar_hasil["panel_lebar"],
-        "kamus_indikator": lebar_hasil["kamus_indikator"],
-        "ringkasan": g["ringkasan"],
-        "baris_sql": baris_sql,
-    }
+    """Terima Silver, tulis tabel Gold, kembalikan {nama_tabel: DataFrame}."""
+    hasil = nasional.jalankan(silver)
+    g = pilih.jalankan(silver if silver is not None else pilih.SILVER)
+    lebar.jalankan(g["panel"])
+    hasil["gold_panel"], hasil["gold_nasional"], hasil["gold_ringkasan"] = g["panel"], g["nasional"], g["ringkasan"]
+    hasil["rekonsiliasi"] = rekonsiliasi.jalankan(g["nasional"], silver)
+    hasil["baris_sql"] = muat_sql.jalankan(
+        silver,
+        {"panel": g["panel"], "nasional": g["nasional"], "rekonsiliasi": hasil["rekonsiliasi"]},
+    )
+    return hasil
