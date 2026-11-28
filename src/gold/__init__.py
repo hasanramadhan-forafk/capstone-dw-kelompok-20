@@ -4,6 +4,8 @@ Sprint 1: tabel nasional dan daftar pasangan rekonsiliasi (`nasional.py`).
 Sprint 2: pemilihan satu nilai per sel (`pilih.py`) -> panel provinsi & nasional (`lebar.py`),
           tabel rekonsiliasi berkategori (`rekonsiliasi.py`), dan pemuatan Silver + Gold ke DuckDB (`muat_sql.py`).
 """
+import pandas as pd
+
 from src.gold import lebar, muat_sql, nasional, pilih, rekonsiliasi
 
 
