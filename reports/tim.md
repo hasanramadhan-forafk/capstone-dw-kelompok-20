@@ -1,7 +1,5 @@
 # Laporan tim — MBG : Memang Banyak tuGas, kasus 20 Hutan, lahan, dan lingkungan
 
-Status: draf akhir Sprint 1. Angka dapat ditarik ulang dari `data/silver/silver.parquet`, `data/gold/`, `reports/`, dan `log-keputusan.csv` (id K-xxx).
-
 ## Ringkasan
 
 Kasus 20 (Hutan, lahan, dan lingkungan) mengintegrasikan tabel statis tutupan hutan (luas dan persen), tiga seri dinamis BPS (penutupan lahan menurut status kawasan `var1304`, luas lahan kritis `var588`, dan komponen penyusun IKLH `var2532`), serta tiga seri pembanding WDI (`AG.LND.FRST.K2`, `AG.LND.FRST.ZS`, dan `EN.ATM.PM25.MC.M3`). Dataset Silver pertama memuat 3.940 baris BPS yang lolos uji skema minimal dan berhasil dimuat ke basis data relasional DuckDB. Temuan terpenting pada Sprint 1 adalah terdeteksinya galat sistematis pada berkas mentah: kolom tahun 2020 pada tabel tutupan hutan tertukar antarprovinsi yang berhasil dibuktikan dan direkonstruksi secara matematis melalui relasi jumlah komponen dan persentase luas.
